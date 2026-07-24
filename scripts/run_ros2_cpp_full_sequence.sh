@@ -26,6 +26,12 @@ set +u
 source /opt/ros/jazzy/setup.bash
 source "${install_abs}/setup.bash"
 set -u
+package_prefix="$(ros2 pkg prefix rgbd_odometry_ros)"
+parameter_file="${package_prefix}/share/rgbd_odometry_ros/config/odometry.yaml"
+if [[ ! -f "${parameter_file}" ]]; then
+  echo "ROS2 parameter file is missing: ${parameter_file}" >&2
+  exit 2
+fi
 
 node_pid=""
 publisher_pid=""
@@ -55,7 +61,7 @@ cleanup() {
 trap cleanup EXIT
 
 setsid ros2 run rgbd_odometry_ros rgbd_odometry_node --ros-args \
-  --params-file "${install_abs}/share/rgbd_odometry_ros/config/odometry.yaml" \
+  --params-file "${parameter_file}" \
   -p metrics_csv:="${output_abs}/metrics.csv" \
   -p trajectory_tum:="${output_abs}/trajectory_local.txt" \
   >"${output_abs}/odometry_node.log" 2>&1 &
