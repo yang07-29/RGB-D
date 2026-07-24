@@ -1,0 +1,69 @@
+{
+  "backend": "ROS2 Jazzy C++",
+  "frames": 796,
+  "metrics_rows": 796,
+  "trajectory_poses": 796,
+  "status_counts": {
+    "initialized": 1,
+    "ok": 786,
+    "rejected_high_rmse_0.1709": 1,
+    "rejected_high_rmse_0.1952": 1,
+    "rejected_high_rmse_0.1318": 1,
+    "rejected_high_rmse_0.1479": 1,
+    "rejected_high_rmse_0.1213": 1,
+    "rejected_high_rmse_0.1268": 1,
+    "rejected_high_rmse_0.1335": 1,
+    "rejected_high_rmse_0.1510": 1,
+    "rejected_high_rmse_0.1396": 1
+  },
+  "callback_latency_ms": {
+    "mean": 3.07362639321608,
+    "median": 2.4131584999999998,
+    "p95": 7.16138325,
+    "fps_from_mean": 325.34858569900973
+  },
+  "process_peak_rss_bytes": 82722816,
+  "ate_rpe": {
+    "method": "ros2_cpp_point_to_point",
+    "ate": {
+      "rmse_m": 0.17578323925457823,
+      "mean_m": 0.15705937532613237,
+      "median_m": 0.146168000797177,
+      "max_m": 0.39057767681392846
+    },
+    "rpe_frame_delta_1": {
+      "frame_delta": 1,
+      "pairs": 795,
+      "translation_rmse_m": 0.01115084288522219,
+      "translation_mean_m": 0.009273169456326218,
+      "rotation_rmse_deg": 0.5745675295905983,
+      "rotation_mean_deg": 0.4945053902997201
+    },
+    "alignment_estimated_to_ground_truth": {
+      "rotation": [
+        [
+          -0.5720470104796365,
+          0.6584419825481809,
+          -0.48909750911176375
+        ],
+        [
+          0.6366821513769576,
+          -0.01947558952975989,
+          -0.7708803665488422
+        ],
+        [
+          -0.5171054591853768,
+          -0.7523794634561006,
+          -0.40807730523785757
+        ]
+      ],
+      "translation_m": [
+        1.3318570321154621,
+        0.6705865677629594,
+        1.565147316285724
+      ]
+    }
+  },
+  "synchronizer_flush": "one later timestamp pair is sent only to release the final real pair; it is not in the trajectory",
+  "ground_truth_usage": "evaluation only; poses are not published or read by the odometry node"
+}

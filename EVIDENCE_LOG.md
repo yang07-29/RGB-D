@@ -12,7 +12,7 @@ This file separates verified work from patent-plan statements. Do not copy a cla
 | Keyframes, loop closure, pose graph | Verified offline on TUM fr1/xyz | `src/pose_graph_slam.py`, `results/pose_graph/`, local optimized pose graph/PLY/CSV/plots | "Selected 129 keyframes, verified FPFH/RANSAC loop candidates with ICP and optimized an Open3D pose graph; keyframe ATE RMSE decreased from 0.040787 m to 0.023802 m, while two odometry-distant hard negatives were rejected." |
 | Lightweight learned loop descriptor | Verified offline on three sequence-isolated TUM splits | `src/train_loop_descriptor.py`, `results/loop_learning/`, local checkpoints/descriptors, 10-epoch history across two variants | "Trained and ablated MobileNetV3-Small loop descriptors with/without SE using fr1/desk train, fr1/desk2 validation and held-out fr1/xyz test; the SE model reached 0.9574/0.9787 Recall@1/5 and 0.6768 pair F1 under the recorded protocol." |
 | Learned candidates in pose graph | Verified offline on TUM fr1/xyz | `results/loop_learning/learned_pose_graph_*`, plots and local pose graph/map | "Fed frozen RGB descriptors into geometry-verified loop discovery; keyframe ATE decreased from 0.040787 m to 0.024579 m. Post-hoc GT labelled 28 accepted edges correct and 2 slightly beyond the predeclared 5 cm criterion." |
-| ROS2 integration | Python runtime verified on Windows RoboStack; C++ build/test verified on Ubuntu CI | `results/ros2/`, `ros2_ws/`, GitHub run `30070818522`, local full-run/rosbag/RViz artifacts | "Ran a ROS2 Jazzy Python RGB-D odometry node on all 796 TUM associations, published odom/path/cloud/TF, recorded/replayed a rosbag and verified RViz; separately compiled and tested the ROS2 C++ node on Ubuntu 24.04." Do not relabel the CI result as C++ ROS graph runtime, robot, or Jetson evidence. |
+| ROS2 integration | Python runtime verified on Windows RoboStack; C++ full topic runtime verified on Ubuntu CI | `results/ros2/`, `results/ros2_cpp_linux_full/`, `ros2_ws/`, GitHub runs `30070818522` and `30074936189` | "Ran ROS2 Jazzy RGB-D odometry over all 796 TUM associations with a Windows Python node and an Ubuntu C++ node, publishing odom/path/cloud/TF; also recorded/replayed a Windows rosbag and verified RViz." Do not relabel public-data playback as a robot, real-camera or Jetson deployment. |
 | Jetson/robot deployment | Not implemented/verified in this rebuild | Hardware/model/version, commands, runtime and memory logs | Do not claim 5 Hz, memory savings, or on-device deployment. |
 
 ## Result record template
@@ -80,7 +80,19 @@ Peak process RSS: 98,025,472 bytes (93.48 MiB)
 rosbag evidence: 60 RGB + 60 depth + 60 CameraInfo messages; fresh-node replay processed 60/60
 RViz evidence: 1280x800 real window capture, Global Status OK, path/cloud/TF enabled and cloud visible
 Evidence: results/ros2/ and local artifacts/ros2_full_fr1_xyz, ros2_bag_roundtrip, ros2_rviz_demo
-Boundary: the ROS graph runtime evidence is Windows/Python. Ubuntu run 30070818522 proves ROS2 C++ compilation/tests only, not C++ full-sequence topic performance, robot or Jetson deployment.
+Boundary: this block is Windows/Python evidence. Ubuntu run 30074936189 separately proves ROS2 C++ full-sequence topic performance; neither run proves robot, real-camera or Jetson deployment.
+```
+
+```text
+Date: 2026-07-24
+ROS2 environment: GitHub-hosted Ubuntu 24.04, ROS2 Jazzy, C++ Release node, CPU only
+Protocol: official TUM fr1/xyz download; same 796 associations and 0.05 m / 0.12 m point-to-point gates
+Processed / accepted / rejected: 796 / 786 / 9
+ATE / RPE translation / RPE rotation: 0.175783 m / 0.011151 m / 0.574568 deg
+Callback mean / median / p95 / compute throughput: 3.074 ms / 2.413 ms / 7.161 ms / 325.35 FPS
+Input timestamp rate / peak process RSS: 29.92 Hz / 82,722,816 bytes (78.89 MiB)
+Evidence: GitHub run 30074936189 and results/ros2_cpp_linux_full/
+Boundary: compute throughput is not camera end-to-end FPS; GitHub runner playback is not robot, real-camera or Jetson deployment.
 ```
 
 ## Non-negotiable rule

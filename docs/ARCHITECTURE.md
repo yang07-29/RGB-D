@@ -55,16 +55,16 @@ flowchart LR
 
 测试序列不会参与 checkpoint 或阈值选择。Recall@K 只统计存在至少一个真值历史回环的查询；pair precision/recall 统计全部满足时间间隔的查询—候选对。
 
-## ROS2 数据链路：Windows RoboStack 已运行
+## ROS2 数据链路：Windows Python 与 Ubuntu C++ 均已运行
 
-`ros2_ws/src/rgbd_odometry_ros` 包含 TUM 模拟发布器、RGB/depth 近似同步、CameraInfo、C++ 节点源码与可移植 Python ICP 后端；`rgbd_odometry_py` 提供 Windows 可执行入口。2026-07-24 已在隔离的 RoboStack Jazzy + CycloneDDS 环境完成 796 帧直接话题运行、60 帧 rosbag2 录制/独立回放和真实 RViz 显示。因为本机缺少 Visual Studio 2022 C++ 工具链，实际运行的是 Python 后端，不能把这些数字写成 ROS2 C++ 性能。
+`ros2_ws/src/rgbd_odometry_ros` 包含 TUM 模拟发布器、RGB/depth 近似同步、CameraInfo、C++ 节点源码与可移植 Python ICP 后端；`rgbd_odometry_py` 提供 Windows 可执行入口。2026-07-24 已在隔离的 RoboStack Jazzy + CycloneDDS 环境完成 Python 后端 796 帧直接话题运行、60 帧 rosbag2 录制/独立回放和真实 RViz 显示。因为本机缺少 Visual Studio 2022 C++ 工具链，这些 Windows 数字不能写成 C++ 性能；C++ 证据来自下述 Ubuntu 工作流。
 
 ```mermaid
 flowchart LR
     A["TUM publisher 或 rosbag2 play"] --> B["/camera/color/image_raw"]
     A --> C["/camera/depth/image_raw"]
     A --> D["/camera/camera_info"]
-    B --> E["rgbd_odometry Python node\nApproximateTime + CameraInfo"]
+    B --> E["rgbd_odometry Python / C++ node\nApproximateTime + CameraInfo"]
     C --> E
     D --> E
     E --> F["/odom + TF"]
@@ -80,4 +80,4 @@ TUM 发布器只输出图像和内参；groundtruth pose 不进入 ROS graph。�
 
 完整运行处理 796/796 帧、最终待处理计数为 0，接受/拒绝 786/9 个帧对；回调均值/中位数/p95 为 11.298/10.010/20.841 ms。60 帧 rosbag 含三个输入话题各 60 条，新节点回放后重新产生 60 行轨迹。RViz 配置把点云 Reliability 明确设为 Best Effort，与节点 sensor-data QoS 一致；真实截图和日志见 `results/ros2/`。
 
-GitHub Actions 运行 [30070818522](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30070818522) 已在 Ubuntu 24.04 编译并测试 ROS2 C++ 节点；运行 [30070922101](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30070922101) 已让独立 C++17 核心处理同一 796 帧全序列。仍未完成的是让 ROS2 C++ 节点在 ROS graph 中消费完整序列并记录话题级性能，这三条证据不能混为一条。
+GitHub Actions 运行 [30070818522](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30070818522) 在 Ubuntu 24.04 编译并测试 ROS2 C++ 节点；运行 [30070922101](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30070922101) 让独立 C++17 核心处理同一 796 帧；运行 [30074936189](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30074936189) 进一步让 ROS2 C++ 节点通过真实 topic graph 处理 796/796 帧并记录 ATE/RPE、回调延迟、RSS、话题和日志。三组证据的性能范围不同，不能混成一个端到端数字。

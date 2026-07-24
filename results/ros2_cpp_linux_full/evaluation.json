@@ -1,0 +1,52 @@
+{
+  "trajectory": "/__w/rgbd-pointcloud-registration/rgbd-pointcloud-registration/artifacts/ros2_cpp_linux_full/trajectory_local.txt",
+  "dataset": "/__w/rgbd-pointcloud-registration/rgbd-pointcloud-registration/data/rgbd_dataset_freiburg1_xyz",
+  "frames": 796,
+  "timestamp_max_offset_s": 0.0,
+  "alignment": "SE(3), no scale",
+  "metrics": {
+    "method": "ros2_cpp_point_to_point",
+    "ate": {
+      "rmse_m": 0.17578323925457823,
+      "mean_m": 0.15705937532613237,
+      "median_m": 0.146168000797177,
+      "max_m": 0.39057767681392846
+    },
+    "rpe_frame_delta_1": {
+      "frame_delta": 1,
+      "pairs": 795,
+      "translation_rmse_m": 0.01115084288522219,
+      "translation_mean_m": 0.009273169456326218,
+      "rotation_rmse_deg": 0.5745675295905983,
+      "rotation_mean_deg": 0.4945053902997201
+    },
+    "alignment_estimated_to_ground_truth": {
+      "rotation": [
+        [
+          -0.5720470104796365,
+          0.6584419825481809,
+          -0.48909750911176375
+        ],
+        [
+          0.6366821513769576,
+          -0.01947558952975989,
+          -0.7708803665488422
+        ],
+        [
+          -0.5171054591853768,
+          -0.7523794634561006,
+          -0.40807730523785757
+        ]
+      ],
+      "translation_m": [
+        1.3318570321154621,
+        0.6705865677629594,
+        1.565147316285724
+      ]
+    }
+  },
+  "artifacts": [
+    "trajectory_ate_aligned.txt",
+    "trajectory_xy_xz.png"
+  ]
+}

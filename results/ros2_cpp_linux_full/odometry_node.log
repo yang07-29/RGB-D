@@ -1,0 +1,30 @@
+[INFO] [1784877529.607578769] [rgbd_odometry]: Subscribing RGB=/camera/color/image_raw depth=/camera/depth/image_raw camera_info=/camera/camera_info qos=reliable
+[INFO] [1784877529.607708364] [rgbd_odometry]: Metrics CSV: /__w/rgbd-pointcloud-registration/rgbd-pointcloud-registration/artifacts/ros2_cpp_linux_full/metrics.csv
+[INFO] [1784877535.921960515] [rgbd_odometry]: processed=30 latency=1.33 ms pending_or_dropped=1
+[INFO] [1784877536.924016664] [rgbd_odometry]: processed=60 latency=3.40 ms pending_or_dropped=1
+[INFO] [1784877537.928669054] [rgbd_odometry]: processed=90 latency=7.64 ms pending_or_dropped=1
+[INFO] [1784877538.922045936] [rgbd_odometry]: processed=120 latency=1.48 ms pending_or_dropped=1
+[INFO] [1784877539.922502355] [rgbd_odometry]: processed=150 latency=2.24 ms pending_or_dropped=1
+[INFO] [1784877540.929260018] [rgbd_odometry]: processed=180 latency=8.80 ms pending_or_dropped=1
+[INFO] [1784877541.923745805] [rgbd_odometry]: processed=210 latency=3.36 ms pending_or_dropped=1
+[INFO] [1784877542.922921406] [rgbd_odometry]: processed=240 latency=2.74 ms pending_or_dropped=1
+[INFO] [1784877543.923944850] [rgbd_odometry]: processed=270 latency=3.32 ms pending_or_dropped=1
+[INFO] [1784877544.922863247] [rgbd_odometry]: processed=300 latency=2.64 ms pending_or_dropped=1
+[INFO] [1784877545.921814566] [rgbd_odometry]: processed=330 latency=1.67 ms pending_or_dropped=1
+[INFO] [1784877546.923828994] [rgbd_odometry]: processed=360 latency=3.37 ms pending_or_dropped=1
+[INFO] [1784877547.925577543] [rgbd_odometry]: processed=390 latency=4.03 ms pending_or_dropped=1
+[INFO] [1784877548.921236667] [rgbd_odometry]: processed=420 latency=1.32 ms pending_or_dropped=0
+[INFO] [1784877549.922480845] [rgbd_odometry]: processed=450 latency=1.98 ms pending_or_dropped=1
+[INFO] [1784877550.923213366] [rgbd_odometry]: processed=480 latency=2.52 ms pending_or_dropped=1
+[INFO] [1784877551.923016493] [rgbd_odometry]: processed=510 latency=2.31 ms pending_or_dropped=1
+[INFO] [1784877552.921739609] [rgbd_odometry]: processed=540 latency=1.48 ms pending_or_dropped=0
+[INFO] [1784877553.923692190] [rgbd_odometry]: processed=570 latency=3.34 ms pending_or_dropped=0
+[INFO] [1784877554.923865074] [rgbd_odometry]: processed=600 latency=3.36 ms pending_or_dropped=0
+[INFO] [1784877555.922750314] [rgbd_odometry]: processed=630 latency=2.92 ms pending_or_dropped=0
+[INFO] [1784877556.921993875] [rgbd_odometry]: processed=660 latency=2.18 ms pending_or_dropped=0
+[INFO] [1784877557.923921443] [rgbd_odometry]: processed=690 latency=3.06 ms pending_or_dropped=0
+[INFO] [1784877558.923761319] [rgbd_odometry]: processed=720 latency=3.50 ms pending_or_dropped=0
+[INFO] [1784877559.921336672] [rgbd_odometry]: processed=750 latency=1.46 ms pending_or_dropped=0
+[INFO] [1784877560.921904070] [rgbd_odometry]: processed=780 latency=1.45 ms pending_or_dropped=0
+[INFO] [1784877563.779022469] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [1784877563.779453251] [rgbd_odometry]: processed=796 rgb_received=797 depth_received=797 pending_or_dropped=1

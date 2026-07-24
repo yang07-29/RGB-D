@@ -72,4 +72,4 @@ ROS 发布器与离线评测使用逐项相同的 796 个 RGB 时间戳：RGB-de
 - `bag_info.txt`、`bag_roundtrip_summary.json`：rosbag 消息数与回放闭环。
 - `rviz_summary.json`：真实窗口标题、截图尺寸和处理帧数。
 
-本目录的运行指标只证明 Windows RoboStack 下的 ROS2 Python 数据链路。本机没有 Visual Studio 2022 C++ 工具链，因此未声称本地 ROS2 C++ 运行；不过 GitHub Actions 运行 [30070818522](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30070818522) 已在 Ubuntu 24.04 编译并测试 C++ 节点。该 CI 证据不等于 C++ ROS graph 全序列性能，也没有机器人、Jetson、功耗或实机传感器结果。
+本目录的运行指标只证明 Windows RoboStack 下的 ROS2 Python 数据链路。本机没有 Visual Studio 2022 C++ 工具链，因此未声称本地 ROS2 C++ 运行。Ubuntu C++ 的独立证据来自 GitHub Actions 运行 [30074936189](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30074936189)，详见 [`../ros2_cpp_linux_full/`](../ros2_cpp_linux_full/)；两个平台的性能范围不能混用，也都没有机器人、Jetson、功耗或实机传感器结果。

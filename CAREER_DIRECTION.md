@@ -4,7 +4,7 @@
 
 本项目服务于从“水声信号处理/AI”扩展到 **3D 视觉、SLAM、机器人感知与 C++ 视觉算法**岗位的作品集。核心卖点不是专利名称，而是可运行、可复现、可解释的几何算法和工程能力。
 
-当前已真实证明的能力：Python/NumPy/SciPy/Open3D 几何基线、Windows 与 Ubuntu 的 C++17/Eigen/OpenCV/CMake 全序列热路径、RGB-D 点云预处理、Kabsch/ICP、多帧里程计、ATE/RPE、关键帧/回环/位姿图、MobileNetV3/SE 回环描述子，以及 Windows RoboStack 下的 ROS2 Python/rosbag/RViz 数据链路。ROS2 C++ 已在 Ubuntu CI 编译测试；Jetson 和机器人仍无硬件证据。
+当前已真实证明的能力：Python/NumPy/SciPy/Open3D 几何基线、Windows 与 Ubuntu 的 C++17/Eigen/OpenCV/CMake 全序列热路径、RGB-D 点云预处理、Kabsch/ICP、多帧里程计、ATE/RPE、关键帧/回环/位姿图、MobileNetV3/SE 回环描述子，Windows RoboStack 下的 ROS2 Python/rosbag/RViz 数据链路，以及 Ubuntu ROS2 C++ 796 帧话题运行。Jetson 和机器人仍无硬件证据。
 
 ## 两周执行顺序
 
@@ -26,10 +26,10 @@
 ## 后续顺序与状态
 
 1. 已完成：关键帧、传统/学习回环候选、局部精配准与位姿图优化，并报告优化前后 ATE 和错误边。
-2. 已完成（限定平台）：Windows RoboStack 的 rosbag 回放、图像/相机内参订阅、`/odom`/`/path`/TF/点云发布、RViz 与延迟/RSS；ROS2 C++ 已在 Ubuntu CI 编译测试，但 C++ ROS graph 全序列运行待做。
+2. 已完成（限定平台）：Windows RoboStack 的 rosbag 回放、图像/相机内参订阅、`/odom`/`/path`/TF/点云发布、RViz 与延迟/RSS；Ubuntu ROS2 C++ 已通过相同 796 帧 ROS graph 运行并保存 ATE/RPE、延迟和 RSS。
 3. 已完成（限定数据）：MobileNetV3+SE 服务于回环检索，包含序列隔离、HSV/无 SE 基线、Recall/F1 和回环后 ATE；跨数据集泛化待做。
 4. 未开始：Jetson；仅在真实硬件上记录 JetPack、ROS2、ONNX/TensorRT、端到端延迟、RAM/显存、功耗和演示视频。
 
 ## 当前项目的诚实命名
 
-当前可以诚实称为“RGB-D 里程计与离线回环/位姿图重建工程”，但不能称为机器人实机 SLAM 产品。可以展示 Python、Windows/Ubuntu C++17+CMake、Windows ROS2 Python 数据链路和 Ubuntu ROS2 C++ 编译测试能力；不能把 CI 编译表述成 ROS2 C++ 全序列运行或机器人部署。
+当前可以诚实称为“RGB-D 里程计与离线回环/位姿图重建工程”，但不能称为机器人实机 SLAM 产品。可以展示 Python、Windows/Ubuntu C++17+CMake、Windows ROS2 Python 数据链路和 Ubuntu ROS2 C++ 公开数据全序列运行能力；不能把 GitHub runner 回放表述成真实相机、机器人或 Jetson 部署。

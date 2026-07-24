@@ -1,0 +1,2 @@
+[INFO] [1784877531.966758174] [tum_rgbd_publisher]: Loaded 796 associated RGB-D pairs from /__w/rgbd-pointcloud-registration/rgbd-pointcloud-registration/data/rgbd_dataset_freiburg1_xyz; startup delay=3.0s qos=reliable flush_after_done=True
+[INFO] [1784877561.475546261] [tum_rgbd_publisher]: Finished publishing 796 TUM frames plus one synchronizer flush pair
