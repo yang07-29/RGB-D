@@ -49,6 +49,7 @@ jobs:
             install/ros2 \
             796
       - name: Record runner environment
+        if: always()
         shell: bash
         run: |
           {
@@ -60,6 +61,7 @@ jobs:
             ros2 doctor --report || true
           } > artifacts/ros2_cpp_linux_full/runner_environment.txt 2>&1
       - name: Upload ROS2 C++ evidence only
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ros2-cpp-tum-fr1-xyz-results

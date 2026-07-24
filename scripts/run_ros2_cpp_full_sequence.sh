@@ -29,19 +29,32 @@ set -u
 
 node_pid=""
 publisher_pid=""
+stop_process_group() {
+  local pid="$1"
+  if [[ -z "${pid}" ]] || ! kill -0 "${pid}" 2>/dev/null; then
+    return
+  fi
+  kill -INT -- "-${pid}" 2>/dev/null || true
+  for _ in {1..20}; do
+    kill -0 "${pid}" 2>/dev/null || break
+    sleep 0.25
+  done
+  if kill -0 "${pid}" 2>/dev/null; then
+    kill -TERM -- "-${pid}" 2>/dev/null || true
+    sleep 1
+  fi
+  if kill -0 "${pid}" 2>/dev/null; then
+    kill -KILL -- "-${pid}" 2>/dev/null || true
+  fi
+  wait "${pid}" 2>/dev/null || true
+}
 cleanup() {
-  if [[ -n "${publisher_pid}" ]] && kill -0 "${publisher_pid}" 2>/dev/null; then
-    kill -INT "${publisher_pid}" 2>/dev/null || true
-  fi
-  if [[ -n "${node_pid}" ]] && kill -0 "${node_pid}" 2>/dev/null; then
-    kill -INT "${node_pid}" 2>/dev/null || true
-  fi
-  [[ -z "${publisher_pid}" ]] || wait "${publisher_pid}" 2>/dev/null || true
-  [[ -z "${node_pid}" ]] || wait "${node_pid}" 2>/dev/null || true
+  stop_process_group "${publisher_pid}"
+  stop_process_group "${node_pid}"
 }
 trap cleanup EXIT
 
-ros2 run rgbd_odometry_ros rgbd_odometry_node --ros-args \
+setsid ros2 run rgbd_odometry_ros rgbd_odometry_node --ros-args \
   --params-file "${install_abs}/share/rgbd_odometry_ros/config/odometry.yaml" \
   -p metrics_csv:="${output_abs}/metrics.csv" \
   -p trajectory_tum:="${output_abs}/trajectory_local.txt" \
@@ -49,7 +62,7 @@ ros2 run rgbd_odometry_ros rgbd_odometry_node --ros-args \
 node_pid=$!
 
 sleep 2
-ros2 run rgbd_odometry_ros tum_rgbd_publisher --ros-args \
+setsid ros2 run rgbd_odometry_ros tum_rgbd_publisher --ros-args \
   -p dataset:="${dataset_abs}" \
   -p publish_hz:=30.0 \
   -p max_frames:="${expected_frames}" \
@@ -73,7 +86,9 @@ while true; do
     exit 1
   fi
   if (( SECONDS >= deadline )); then
-    echo "Timed out waiting for ${expected_frames} processed frames" >&2
+    rows=0
+    [[ ! -f "${output_abs}/metrics.csv" ]] || rows=$(( $(wc -l <"${output_abs}/metrics.csv") - 1 ))
+    echo "Timed out waiting for ${expected_frames} processed frames; observed ${rows}" >&2
     exit 1
   fi
   sleep 1
