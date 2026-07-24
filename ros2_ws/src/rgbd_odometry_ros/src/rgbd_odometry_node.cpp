@@ -68,6 +68,7 @@ public:
         sync_slop_s_ = declare_parameter<double>("sync_slop_s", 0.02);
         metrics_csv_ = declare_parameter<std::string>("metrics_csv", "ros2_metrics.csv");
         trajectory_tum_ = declare_parameter<std::string>("trajectory_tum", "ros2_trajectory.txt");
+        reliable_qos_ = declare_parameter<bool>("reliable_qos", false);
         if (stride_ < 1 || voxel_m_ <= 0.0 || min_depth_m_ < 0.0 || max_depth_m_ <= min_depth_m_ ||
             max_iterations_ < 1 || max_correspondence_m_ <= 0.0 || min_correspondence_ratio_ <= 0.0 ||
             min_correspondence_ratio_ > 1.0 || sync_slop_s_ <= 0.0) {
@@ -93,7 +94,13 @@ public:
         metrics_ << "processed_frame,rgb_stamp_s,depth_stamp_s,rgb_depth_offset_s,rgb_received,depth_received,"
                     "unsynchronized_or_pending,status,point_count,correspondences,rmse_m,callback_latency_ms,process_peak_rss_bytes\n";
 
-        const auto sensor_qos = rclcpp::SensorDataQoS();
+        auto sensor_qos = rclcpp::QoS(rclcpp::KeepLast(reliable_qos_ ? 100 : 5));
+        sensor_qos.durability_volatile();
+        if (reliable_qos_) {
+            sensor_qos.reliable();
+        } else {
+            sensor_qos.best_effort();
+        }
         rgb_sub_.subscribe(this, rgb_topic_, sensor_qos.get_rmw_qos_profile());
         depth_sub_.subscribe(this, depth_topic_, sensor_qos.get_rmw_qos_profile());
         rgb_sub_.registerCallback([this](const Image::ConstSharedPtr&) { ++rgb_received_; });
@@ -112,7 +119,10 @@ public:
         tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
         path_.header.frame_id = odom_frame_;
 
-        RCLCPP_INFO(get_logger(), "Subscribing RGB=%s depth=%s camera_info=%s", rgb_topic_.c_str(), depth_topic_.c_str(), camera_info_topic_.c_str());
+        RCLCPP_INFO(
+            get_logger(), "Subscribing RGB=%s depth=%s camera_info=%s qos=%s",
+            rgb_topic_.c_str(), depth_topic_.c_str(), camera_info_topic_.c_str(),
+            reliable_qos_ ? "reliable" : "best_effort");
         RCLCPP_INFO(get_logger(), "Metrics CSV: %s", metrics_csv_.c_str());
     }
 
@@ -318,6 +328,7 @@ private:
     double min_correspondence_ratio_ = 0.5;
     double max_acceptable_rmse_m_ = 0.12;
     double sync_slop_s_ = 0.02;
+    bool reliable_qos_ = false;
 
     message_filters::Subscriber<Image> rgb_sub_;
     message_filters::Subscriber<Image> depth_sub_;

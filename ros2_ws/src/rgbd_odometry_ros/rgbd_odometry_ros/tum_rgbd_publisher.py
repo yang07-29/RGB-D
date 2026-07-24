@@ -10,7 +10,7 @@ from PIL import Image
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import CameraInfo, Image as ImageMessage
 
 from .tum_io import associate_rgb_depth
@@ -33,6 +33,7 @@ class TumRgbdPublisher(Node):
         dataset = Path(self.declare_parameter("dataset", "data/rgbd_dataset_freiburg1_xyz").value)
         publish_hz = float(self.declare_parameter("publish_hz", 30.0).value)
         startup_delay_s = float(self.declare_parameter("startup_delay_s", 0.0).value)
+        reliable_qos = bool(self.declare_parameter("reliable_qos", False).value)
         self.loop = bool(self.declare_parameter("loop", False).value)
         self.camera_frame = str(self.declare_parameter("camera_frame", "camera_link").value)
         max_frames = int(self.declare_parameter("max_frames", 0).value)
@@ -43,17 +44,41 @@ class TumRgbdPublisher(Node):
             self.frames = self.frames[:max_frames]
         self.index = 0
         self.startup_deadline = time.monotonic() + startup_delay_s
-        self.rgb_pub = self.create_publisher(ImageMessage, "/camera/color/image_raw", qos_profile_sensor_data)
-        self.depth_pub = self.create_publisher(ImageMessage, "/camera/depth/image_raw", qos_profile_sensor_data)
-        self.info_pub = self.create_publisher(CameraInfo, "/camera/camera_info", qos_profile_sensor_data)
+        with Image.open(self.frames[0][2]) as first_rgb:
+            self.image_width, self.image_height = first_rgb.size
+        qos = QoSProfile(
+            history=HistoryPolicy.KEEP_LAST,
+            depth=100 if reliable_qos else 5,
+            reliability=ReliabilityPolicy.RELIABLE if reliable_qos else ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+        )
+        self.rgb_pub = self.create_publisher(ImageMessage, "/camera/color/image_raw", qos)
+        self.depth_pub = self.create_publisher(ImageMessage, "/camera/depth/image_raw", qos)
+        self.info_pub = self.create_publisher(CameraInfo, "/camera/camera_info", qos)
         self.timer = self.create_timer(1.0 / publish_hz, self.publish_frame)
         self.get_logger().info(
             f"Loaded {len(self.frames)} associated RGB-D pairs from {dataset}; "
-            f"startup delay={startup_delay_s:.1f}s"
+            f"startup delay={startup_delay_s:.1f}s qos={'reliable' if reliable_qos else 'best_effort'}"
         )
+
+    def make_camera_info(self, stamp, height: int, width: int) -> CameraInfo:
+        info = CameraInfo()
+        info.header.stamp = stamp
+        info.header.frame_id = self.camera_frame
+        info.height = height
+        info.width = width
+        info.distortion_model = "plumb_bob"
+        info.d = [0.0] * 5
+        info.k = [525.0, 0.0, 319.5, 0.0, 525.0, 239.5, 0.0, 0.0, 1.0]
+        info.r = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+        info.p = [525.0, 0.0, 319.5, 0.0, 0.0, 525.0, 239.5, 0.0, 0.0, 0.0, 1.0, 0.0]
+        return info
 
     def publish_frame(self) -> None:
         if time.monotonic() < self.startup_deadline:
+            self.info_pub.publish(
+                self.make_camera_info(to_stamp(self.frames[0][0]), self.image_height, self.image_width)
+            )
             return
         if self.index >= len(self.frames):
             if self.loop:
@@ -86,15 +111,7 @@ class TumRgbdPublisher(Node):
         depth_message.step = depth_message.width * 2
         depth_message.data = depth.astype("<u2", copy=False).tobytes()
 
-        info = CameraInfo()
-        info.header = rgb_message.header
-        info.height = rgb_message.height
-        info.width = rgb_message.width
-        info.distortion_model = "plumb_bob"
-        info.d = [0.0] * 5
-        info.k = [525.0, 0.0, 319.5, 0.0, 525.0, 239.5, 0.0, 0.0, 1.0]
-        info.r = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-        info.p = [525.0, 0.0, 319.5, 0.0, 0.0, 525.0, 239.5, 0.0, 0.0, 0.0, 1.0, 0.0]
+        info = self.make_camera_info(rgb_stamp, rgb_message.height, rgb_message.width)
 
         self.info_pub.publish(info)
         self.rgb_pub.publish(rgb_message)

@@ -62,6 +62,7 @@ trap cleanup EXIT
 
 setsid ros2 run rgbd_odometry_ros rgbd_odometry_node --ros-args \
   --params-file "${parameter_file}" \
+  -p reliable_qos:=true \
   -p metrics_csv:="${output_abs}/metrics.csv" \
   -p trajectory_tum:="${output_abs}/trajectory_local.txt" \
   >"${output_abs}/odometry_node.log" 2>&1 &
@@ -72,6 +73,7 @@ setsid ros2 run rgbd_odometry_ros tum_rgbd_publisher --ros-args \
   -p dataset:="${dataset_abs}" \
   -p publish_hz:=30.0 \
   -p startup_delay_s:=3.0 \
+  -p reliable_qos:=true \
   -p max_frames:="${expected_frames}" \
   >"${output_abs}/publisher.log" 2>&1 &
 publisher_pid=$!
