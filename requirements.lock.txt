@@ -1,0 +1,5 @@
+# Exact package versions used for the verified full-sequence run on 2026-07-14.
+numpy==2.4.4
+scipy==1.16.3
+matplotlib==3.10.6
+pillow==12.2.0

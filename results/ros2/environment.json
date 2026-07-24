@@ -1,0 +1,31 @@
+{
+  "recorded_date": "2026-07-24",
+  "operating_system": "Microsoft Windows 11 Home Chinese 10.0.26200",
+  "cpu": "Intel(R) Core(TM) i7-14650HX",
+  "system_ram_kib": 16481468,
+  "gpus_present": [
+    "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "Intel(R) UHD Graphics"
+  ],
+  "gpu_usage_for_ros2_odometry": "not used",
+  "python": "3.12.13 (conda-forge, MSC v.1944 64 bit AMD64)",
+  "ros_distribution": "Jazzy via robostack-jazzy",
+  "rmw": "rmw_cyclonedds_cpp 2.2.3",
+  "dependencies": {
+    "ros-jazzy-rclpy": "7.1.11",
+    "ros-jazzy-rviz2": "14.1.20",
+    "ros-jazzy-rosbag2": "0.26.10",
+    "numpy": "2.5.1",
+    "scipy": "1.18.0",
+    "opencv": "4.13.0",
+    "pillow": "12.3.0",
+    "psutil": "7.2.2"
+  },
+  "input_resolution_px": [640, 480],
+  "depth_encoding": "16UC1",
+  "depth_scale": 5000,
+  "notes": [
+    "Versions were queried from the repository-local .conda-ros2 environment.",
+    "The ROS2 odometry backend is CPU-only; installed GPUs did not participate in this run."
+  ]
+}

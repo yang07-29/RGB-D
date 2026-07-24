@@ -1,0 +1,2 @@
+sequence,frames,keyframes,odometry_edges,loop_candidates,accepted_loops,posthoc_accepted_correct,posthoc_accepted_incorrect,hard_negative_candidates,hard_negatives_rejected,keyframe_ate_before_m,keyframe_ate_after_m,ate_reduction_percent,keyframe_rpe_translation_before_m,keyframe_rpe_translation_after_m,keyframe_rpe_rotation_before_deg,keyframe_rpe_rotation_after_deg,total_runtime_s,peak_rss_mib
+TUM fr1/xyz,796,129,128,30,30,30,0,2,2,0.040786508566,0.023802421342,41.641434438,0.012491028873,0.012352276686,1.208288438627,1.203777127324,19.724770000,239.785156250

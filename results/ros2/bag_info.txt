@@ -1,0 +1,14 @@
+
+Files:             tum_rgbd_input_bag_0.db3
+Bag size:          88.1 MiB
+Storage id:        sqlite3
+ROS Distro:        jazzy
+Duration:          5.883735500s
+Start:             Jul 24 2026 09:51:16.573483900 (1784857876.573483900)
+End:               Jul 24 2026 09:51:22.457219400 (1784857882.457219400)
+Messages:          180
+Topic information: Topic: /camera/camera_info | Type: sensor_msgs/msg/CameraInfo | Count: 60 | Serialization Format: cdr
+                   Topic: /camera/color/image_raw | Type: sensor_msgs/msg/Image | Count: 60 | Serialization Format: cdr
+                   Topic: /camera/depth/image_raw | Type: sensor_msgs/msg/Image | Count: 60 | Serialization Format: cdr
+Service:           0
+Service information:

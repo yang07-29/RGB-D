@@ -1,0 +1,214 @@
+{
+  "experiment": "TUM fr1/xyz keyframes, descriptor loop candidates, FPFH/RANSAC, and Open3D pose graph",
+  "created_utc": "2026-07-24T00:25:17.797105+00:00",
+  "dataset": "data\\rgbd_dataset_freiburg1_xyz",
+  "parameters": {
+    "dataset": "data\\rgbd_dataset_freiburg1_xyz",
+    "output": "artifacts\\pose_graph_learned_fr1_xyz",
+    "stride": 8,
+    "voxel": 0.05,
+    "min_depth": 0.2,
+    "max_depth": 4.0,
+    "normal_radius": 0.1,
+    "normal_max_nn": 30,
+    "odometry_correspondence": 0.08,
+    "odometry_iterations": 30,
+    "keyframe_translation": 0.05,
+    "keyframe_rotation_deg": 10.0,
+    "keyframe_max_gap": 40,
+    "loop_min_separation": 10,
+    "candidate_mode": "descriptor",
+    "descriptor_file": "artifacts\\loop_learning\\mobilenetv3_se_test_descriptors.npy",
+    "descriptor_threshold": 0.7909525632858276,
+    "descriptor_top_k_per_target": 1,
+    "loop_candidate_distance": 0.1,
+    "loop_candidate_rotation_deg": 25.0,
+    "max_loop_candidates": 30,
+    "hard_negative_candidates": 2,
+    "hard_negative_min_distance": 0.4,
+    "feature_radius": 0.25,
+    "ransac_correspondence": 0.075,
+    "ransac_iterations": 50000,
+    "ransac_confidence": 0.999,
+    "loop_refine_correspondence": 0.08,
+    "loop_refine_iterations": 50,
+    "min_global_fitness": 0.15,
+    "min_refined_fitness": 0.45,
+    "max_refined_rmse": 0.04,
+    "max_consistency_translation": 0.08,
+    "max_consistency_rotation_deg": 15.0,
+    "edge_prune_threshold": 0.25,
+    "loop_closure_preference": 0.1,
+    "quiet": false
+  },
+  "frames": 796,
+  "keyframes": 129,
+  "odometry_edges": 128,
+  "loop_candidates": 30,
+  "accepted_loop_edges_before_optimization": 30,
+  "active_loop_edges_after_optimization": 30,
+  "posthoc_loop_labels": {
+    "accepted_correct": 28,
+    "accepted_incorrect": 2,
+    "note": "Ground truth labels are evaluation-only and never enter candidate generation or acceptance."
+  },
+  "hard_negative_stress": {
+    "candidates": 2,
+    "rejected_by_same_gates": 2,
+    "posthoc_incorrect": 2,
+    "note": "Selected from odometry-distant pairs without ground truth and never inserted into the graph."
+  },
+  "full_frame_odometry": {
+    "method": "open3d_point_to_plane_odometry",
+    "ate": {
+      "rmse_m": 0.054044662999280374,
+      "mean_m": 0.04884687638799397,
+      "median_m": 0.04778700510279478,
+      "max_m": 0.10916257794694338
+    },
+    "rpe_frame_delta_1": {
+      "frame_delta": 1,
+      "pairs": 795,
+      "translation_rmse_m": 0.0055488796238863025,
+      "translation_mean_m": 0.00475854132486011,
+      "rotation_rmse_deg": 0.5469807766533058,
+      "rotation_mean_deg": 0.4764256319465662
+    },
+    "alignment_estimated_to_ground_truth": {
+      "rotation": [
+        [
+          -0.08538016702936095,
+          0.5731384380147638,
+          -0.8149985018072331
+        ],
+        [
+          0.99598352298744,
+          0.0712328766070108,
+          -0.054246651765962245
+        ],
+        [
+          0.026963846453458746,
+          -0.8163566672480156,
+          -0.5769183155561518
+        ]
+      ],
+      "translation_m": [
+        1.3681247121578324,
+        0.6581955423221718,
+        1.6124098017740682
+      ]
+    }
+  },
+  "keyframe_before": {
+    "method": "keyframe_odometry_before_optimization",
+    "ate": {
+      "rmse_m": 0.04078650856608226,
+      "mean_m": 0.03775983351655764,
+      "median_m": 0.03321035131694396,
+      "max_m": 0.08758585443415888
+    },
+    "rpe_frame_delta_1": {
+      "frame_delta": 1,
+      "pairs": 128,
+      "translation_rmse_m": 0.012491028872840997,
+      "translation_mean_m": 0.010356846298117072,
+      "rotation_rmse_deg": 1.2082884387555353,
+      "rotation_mean_deg": 1.0198363807439628
+    },
+    "alignment_estimated_to_ground_truth": {
+      "rotation": [
+        [
+          0.02464087731962941,
+          0.6703809454609209,
+          -0.7416078580542693
+        ],
+        [
+          0.9992780071219411,
+          0.004942493527065739,
+          0.03767009742669196
+        ],
+        [
+          0.02891870756656494,
+          -0.742000646711751,
+          -0.6697751478160583
+        ]
+      ],
+      "translation_m": [
+        1.3361180662242147,
+        0.7090611683556383,
+        1.6866930859411846
+      ]
+    }
+  },
+  "keyframe_after": {
+    "method": "keyframe_pose_graph_after_optimization",
+    "ate": {
+      "rmse_m": 0.02457908869256968,
+      "mean_m": 0.02161636372145915,
+      "median_m": 0.019190238102028846,
+      "max_m": 0.06706719903417364
+    },
+    "rpe_frame_delta_1": {
+      "frame_delta": 1,
+      "pairs": 128,
+      "translation_rmse_m": 0.01214451667761284,
+      "translation_mean_m": 0.010179943544213678,
+      "rotation_rmse_deg": 1.1986683768971358,
+      "rotation_mean_deg": 1.0041869714968659
+    },
+    "alignment_estimated_to_ground_truth": {
+      "rotation": [
+        [
+          0.05983593102458964,
+          0.6215555447824153,
+          -0.7810815361462948
+        ],
+        [
+          0.9982001055456268,
+          -0.04041393523295777,
+          0.04430872518686967
+        ],
+        [
+          -0.004026244791336579,
+          -0.7823269256450408,
+          -0.6228550158453081
+        ]
+      ],
+      "translation_m": [
+        1.3603510328948425,
+        0.6827482146834909,
+        1.6687113797962398
+      ]
+    }
+  },
+  "performance": {
+    "total_runtime_s": 15.523444700011169,
+    "peak_rss_bytes": 242016256
+  },
+  "environment": {
+    "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:26:47) [MSC v.1942 64 bit (AMD64)]",
+    "open3d": "0.19.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "logical_cpu_count": 24,
+    "gpu": "not used"
+  },
+  "artifacts": [
+    "summary.json",
+    "keyframes.csv",
+    "loop_candidates.csv",
+    "hard_negative_candidates.csv",
+    "pose_graph_optimized.json",
+    "trajectory_keyframes_before.txt",
+    "trajectory_keyframes_after.txt",
+    "trajectory_keyframes_before_after.png",
+    "loop_correct_and_rejected_cases.png",
+    "optimized_keyframe_map.ply"
+  ],
+  "notes": [
+    "Ground truth is used only for final ATE/RPE and post-hoc loop labels.",
+    "Candidate discovery uses frozen RGB descriptors only; FPFH/RANSAC supplies global initialization.",
+    "Loop acceptance uses registration fitness/RMSE and odometry-cycle consistency, not ground truth.",
+    "Reported before/after pose-graph metrics are on the identical selected keyframe timestamps."
+  ]
+}

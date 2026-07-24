@@ -1,0 +1,3 @@
+implementation,method,frames,voxel_m,max_correspondence_m,ate_rmse_m,rpe_translation_rmse_m,rpe_rotation_rmse_deg,end_to_end_mean_ms,end_to_end_p95_ms,fps_from_mean,rss_peak_mib,accepted_pairs,rejected_pairs,environment,source_summary
+Python 3.12,point-to-point ICP,796,0.05,0.12,0.175858946801,0.011150821286,0.574578064195,15.585276209,27.398324990,64.163123362,160.871093750,786,9,Windows 11 / Python 3.12.13 / NumPy 2.5.1 / SciPy 1.16.3,artifacts/parameter_sweep/numpy_point_to_point/voxel_0.05_corr_0.12/summary.json
+C++17,point-to-point ICP,796,0.05,0.12,0.175783239277,0.011150842876,0.574567524578,11.395193512,16.800914996,87.756287167,33.722656250,786,9,Windows 11 / GCC 16.1.0 / Eigen 5.0.1 / OpenCV 4.13.0,artifacts/cpp_full_voxel_0.05_corr_0.12/summary.json

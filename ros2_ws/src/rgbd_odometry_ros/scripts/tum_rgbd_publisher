@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+from rgbd_odometry_ros.tum_rgbd_publisher import main
+
+if __name__ == "__main__":
+    main()

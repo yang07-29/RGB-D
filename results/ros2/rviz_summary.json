@@ -1,0 +1,18 @@
+{
+  "status": "success",
+  "bag": "F:\\codex\\rgbd-pointcloud-registration\\artifacts\\ros2_bag_roundtrip\\tum_rgbd_input_bag",
+  "frames_processed": 60,
+  "window_title": "F:\\codex\\rgbd-pointcloud-registration\\ros2_ws\\install\\share\\rgbd_odometry_ros\\rviz\\rgbd_odometry.rviz* - RViz",
+  "screenshot": "F:\\codex\\rgbd-pointcloud-registration\\docs\\images\\ros2_rviz_bag_demo.png",
+  "screenshot_size_px": [
+    1280,
+    800
+  ],
+  "elapsed_wall_s": 11.226855000000796,
+  "visible_displays": [
+    "/path",
+    "/cloud",
+    "/tf",
+    "Grid"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "split": {
+    "train": "data/rgbd_dataset_freiburg1_desk",
+    "validation": "data/rgbd_dataset_freiburg1_desk2",
+    "test": "data/rgbd_dataset_freiburg1_xyz"
+  },
+  "protocol": {
+    "min_frame_separation": 30,
+    "positive_translation_m": 0.2,
+    "positive_rotation_deg": 25.0,
+    "negative_translation_m": 0.5,
+    "negative_rotation_deg": 60.0,
+    "evaluation_step": 5,
+    "validation_selects_threshold": true,
+    "test_is_held_out": true
+  },
+  "training": {
+    "architecture": "MobileNetV3-Small",
+    "descriptor_dim": 128,
+    "loss": "TripletMarginLoss",
+    "margin": 0.3,
+    "epochs": 5,
+    "batch_size": 32,
+    "learning_rate": 0.0003,
+    "triplets_per_anchor": 4,
+    "seed": 20260724
+  }
+}

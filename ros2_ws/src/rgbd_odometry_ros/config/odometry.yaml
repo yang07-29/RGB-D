@@ -1,0 +1,18 @@
+rgbd_odometry:
+  ros__parameters:
+    rgb_topic: /camera/color/image_raw
+    depth_topic: /camera/depth/image_raw
+    camera_info_topic: /camera/camera_info
+    odom_frame: odom
+    camera_frame: camera_link
+    stride: 8
+    voxel_m: 0.05
+    min_depth_m: 0.2
+    max_depth_m: 4.0
+    max_iterations: 30
+    max_correspondence_m: 0.12
+    min_correspondence_ratio: 0.5
+    max_acceptable_rmse_m: 0.12
+    sync_slop_s: 0.02
+    metrics_csv: ros2_metrics.csv
+    trajectory_tum: ros2_trajectory.txt

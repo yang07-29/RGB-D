@@ -1,0 +1,26 @@
+name: rgbd-ros2-jazzy
+channels:
+  - conda-forge
+  - robostack-jazzy
+dependencies:
+  - python=3.12.13
+  - ros-jazzy-ros-base=0.11.0
+  - ros-jazzy-cv-bridge=4.1.0
+  - ros-jazzy-message-filters=4.11.13
+  - ros-jazzy-rviz2=14.1.20
+  - ros-jazzy-rosbag2=0.26.10
+  - ros-jazzy-ament-cmake-python=2.5.6
+  - ros-jazzy-rmw-cyclonedds-cpp=2.2.3
+  - colcon-common-extensions=0.3.0
+  - cxx-compiler=1.11.0
+  - cmake=4.4.0
+  - ninja=1.13.2
+  - pkg-config=0.29.2
+  - eigen=5.0.1
+  - opencv=4.13.0
+  - numpy=2.5.1
+  - pillow=12.3.0
+  - psutil=7.2.2
+  - pip
+  - pip:
+      - scipy==1.18.0

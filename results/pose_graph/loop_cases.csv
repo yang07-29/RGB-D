@@ -1,0 +1,4 @@
+case_type,source_keyframe_id,target_keyframe_id,source_frame_index,target_frame_index,global_fitness,refined_fitness,refined_rmse_m,consistency_translation_m,consistency_rotation_deg,accepted,gt_translation_error_m,gt_rotation_error_deg,posthoc_gt_label
+accepted_loop,40,61,214,334,0.979325353645,0.986942328618,0.025662787940,0.022350385858,0.373303018719,true,0.004968109003,0.308772687871,correct
+hard_negative,38,69,201,368,0.215442092154,0.291407222914,0.051069061489,3.776532448058,156.724215589210,false,3.751640362186,156.295478848429,incorrect
+hard_negative,59,69,310,368,0.172140430351,0.318233295583,0.049639325900,0.551449733444,73.876469808689,false,0.521969755390,76.790260108864,incorrect

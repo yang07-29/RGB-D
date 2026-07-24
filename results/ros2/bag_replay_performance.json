@@ -1,0 +1,25 @@
+{
+  "samples": 60,
+  "callback_latency_ms": {
+    "mean": 7.149303332456232,
+    "median": 6.349899987981189,
+    "p95": 14.32733000765438,
+    "fps_from_mean": 139.87376860347
+  },
+  "input_message_rate_hz_from_timestamps": 29.980801736838025,
+  "rgb_depth_offset_s": {
+    "mean": 0.01446688969930013,
+    "max": 0.017199993133544922
+  },
+  "status_counts": {
+    "initialized": 1,
+    "ok": 58,
+    "rejected_high_rmse_0.1709": 1
+  },
+  "rgb_received_final": 60,
+  "depth_received_final": 60,
+  "unsynchronized_or_pending_final": 0,
+  "process_peak_rss_bytes": 95043584,
+  "gpu": "not used",
+  "note": "Pending count is sampled during callbacks; inspect node shutdown log for the final post-playback count."
+}

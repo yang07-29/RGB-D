@@ -1,0 +1,126 @@
+{
+  "experiment": "sequence-isolated lightweight loop descriptor comparison",
+  "created_utc": "2026-07-24T00:19:25.720303+00:00",
+  "protocol": {
+    "split_policy": "sequence-isolated: train=fr1/desk, validation=fr1/desk2, test=fr1/xyz",
+    "ground_truth_scope": "training labels, validation threshold selection, and final evaluation only",
+    "candidate_policy": "each evaluation query retrieves only older frames separated by min_frame_separation",
+    "threshold_policy": "maximize pair F1 on validation; freeze before test",
+    "protocol": {
+      "min_frame_separation": 30,
+      "positive_translation_m": 0.2,
+      "positive_rotation_deg": 25.0,
+      "negative_translation_m": 0.5,
+      "negative_rotation_deg": 60.0,
+      "evaluation_step": 5
+    },
+    "frame_counts": {
+      "train": 596,
+      "validation": 631,
+      "test": 796
+    },
+    "training_triplets": 1272,
+    "training_anchors": 318
+  },
+  "training": {
+    "epochs": 5,
+    "batch_size": 32,
+    "learning_rate": 0.0003,
+    "margin": 0.3,
+    "descriptor_dim": 128,
+    "seed": 20260724,
+    "pretrained_imagenet": true
+  },
+  "results": [
+    {
+      "method": "hsv_histogram",
+      "descriptor_dim": 512,
+      "with_se": "N/A",
+      "model_parameters": "N/A",
+      "checkpoint_size_bytes": "N/A",
+      "validation_threshold": 0.920128345489502,
+      "validation_f1": 0.17039800995024873,
+      "validation_recall_at_1": 0.46153846153846156,
+      "validation_recall_at_5": 0.5576923076923077,
+      "test_precision": 0.7070872593199509,
+      "test_recall": 0.5594554547138358,
+      "test_f1": 0.624667166455549,
+      "test_recall_at_1": 0.9290780141843972,
+      "test_recall_at_5": 0.9432624113475178,
+      "test_evaluable_queries": 141,
+      "inference_scope": "CPU image read + resize + HSV histogram; one frame",
+      "inference_mean_ms": 6.9631858040973835,
+      "inference_median_ms": 6.93679999676533,
+      "inference_p95_ms": 7.384950000414392,
+      "fps_from_mean": 143.61242513614457,
+      "peak_gpu_allocated_bytes": "N/A"
+    },
+    {
+      "method": "mobilenetv3_no_se",
+      "descriptor_dim": 128,
+      "with_se": false,
+      "model_parameters": 539224,
+      "checkpoint_size_bytes": 2269163,
+      "validation_threshold": 0.7920283079147339,
+      "validation_f1": 0.3363834422657952,
+      "validation_recall_at_1": 0.5961538461538461,
+      "validation_recall_at_5": 0.7692307692307693,
+      "test_precision": 0.4512299144708025,
+      "test_recall": 0.9063252454158177,
+      "test_f1": 0.6024964215905069,
+      "test_recall_at_1": 0.9574468085106383,
+      "test_recall_at_5": 0.9787234042553191,
+      "test_evaluable_queries": 141,
+      "inference_scope": "model forward only; batch=1; preprocessed tensor already on device",
+      "inference_mean_ms": 3.2910369998717215,
+      "inference_median_ms": 2.8196499988553114,
+      "inference_p95_ms": 7.074785005534068,
+      "fps_from_mean": 303.855593248869,
+      "peak_gpu_allocated_bytes": 84746240
+    },
+    {
+      "method": "mobilenetv3_se",
+      "descriptor_dim": 128,
+      "with_se": true,
+      "model_parameters": 1000864,
+      "checkpoint_size_bytes": 4126243,
+      "validation_threshold": 0.7909525632858276,
+      "validation_f1": 0.39489671931956255,
+      "validation_recall_at_1": 0.6346153846153846,
+      "validation_recall_at_5": 0.8461538461538461,
+      "test_precision": 0.633369657343504,
+      "test_recall": 0.7266623448786812,
+      "test_f1": 0.6768162508356155,
+      "test_recall_at_1": 0.9574468085106383,
+      "test_recall_at_5": 0.9787234042553191,
+      "test_evaluable_queries": 141,
+      "inference_scope": "model forward only; batch=1; preprocessed tensor already on device",
+      "inference_mean_ms": 5.057115000963677,
+      "inference_median_ms": 4.263900002115406,
+      "inference_p95_ms": 8.694859999377513,
+      "fps_from_mean": 197.74120220905425,
+      "peak_gpu_allocated_bytes": 92299264
+    }
+  ],
+  "performance": {
+    "total_runtime_s": 600.7752311999939,
+    "peak_process_rss_bytes": 2584309760
+  },
+  "environment": {
+    "python": "3.13.9 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 19:09:58) [MSC v.1929 64 bit (AMD64)]",
+    "torch": "2.11.0+cu128",
+    "torchvision": "0.26.0+cu128",
+    "cuda_available": true,
+    "device": "cuda",
+    "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "logical_cpu_count": 24
+  },
+  "truthfulness_notes": [
+    "Train, validation, and test are separate TUM sequences.",
+    "The decision threshold is chosen independently per method on validation and frozen for test.",
+    "Ground truth supplies supervision/evaluation labels only; descriptor inference receives RGB images only.",
+    "Recall@K includes only queries that have at least one GT-positive historical candidate.",
+    "GPU latency is synchronized batch-1 model forward and excludes image read/preprocessing, as stated in each row."
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "trajectory": "artifacts\\ros2_bag_roundtrip\\replay_trajectory.txt",
+  "dataset": "data\\rgbd_dataset_freiburg1_xyz",
+  "frames": 60,
+  "timestamp_max_offset_s": 0.0,
+  "alignment": "SE(3), no scale",
+  "metrics": {
+    "method": "rosbag_replay_point_to_point_icp",
+    "ate": {
+      "rmse_m": 0.02490568055693541,
+      "mean_m": 0.0221920260088779,
+      "median_m": 0.020708526848549732,
+      "max_m": 0.04789368611699714
+    },
+    "rpe_frame_delta_1": {
+      "frame_delta": 1,
+      "pairs": 59,
+      "translation_rmse_m": 0.00771273576057889,
+      "translation_mean_m": 0.006615983478454834,
+      "rotation_rmse_deg": 0.627470592721415,
+      "rotation_mean_deg": 0.5444485846259032
+    },
+    "alignment_estimated_to_ground_truth": {
+      "rotation": [
+        [
+          -0.20324183486780223,
+          0.5895210064880086,
+          -0.7817657829995724
+        ],
+        [
+          0.9546939484949789,
+          0.2965745815681057,
+          -0.024555697399367235
+        ],
+        [
+          0.21737576053147048,
+          -0.7513378071660368,
+          -0.6230884995378233
+        ]
+      ],
+      "translation_m": [
+        1.3484420561057422,
+        0.6160476885343426,
+        1.6442315837879804
+      ]
+    }
+  },
+  "artifacts": [
+    "trajectory_ate_aligned.txt",
+    "trajectory_xy_xz.png"
+  ]
+}

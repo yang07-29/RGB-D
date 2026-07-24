@@ -1,0 +1,19 @@
+{
+  "status": "success",
+  "frames_requested": 60,
+  "frames_processed_after_replay": 60,
+  "publish_hz": 10.0,
+  "ros_domain_id": 57,
+  "rmw_implementation": "rmw_cyclonedds_cpp",
+  "bag_storage": "sqlite3",
+  "metadata_reindexed_after_windows_ctrl_break": true,
+  "recorded_topic_message_counts": {
+    "/camera/color/image_raw": 60,
+    "/camera/depth/image_raw": 60,
+    "/camera/camera_info": 60
+  },
+  "elapsed_wall_s": 19.625090199988335,
+  "bag": "F:\\codex\\rgbd-pointcloud-registration\\artifacts\\ros2_bag_roundtrip\\tum_rgbd_input_bag",
+  "metrics": "F:\\codex\\rgbd-pointcloud-registration\\artifacts\\ros2_bag_roundtrip\\replay_metrics.csv",
+  "trajectory": "F:\\codex\\rgbd-pointcloud-registration\\artifacts\\ros2_bag_roundtrip\\replay_trajectory.txt"
+}
