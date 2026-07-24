@@ -20,8 +20,12 @@ output_abs="$(cd "${output}" && pwd)"
 dataset_abs="$(cd "${dataset}" && pwd)"
 install_abs="$(cd "${install_prefix}" && pwd)"
 
+# ROS-generated setup files may probe unset AMENT variables. Keep strict mode
+# for this script, but temporarily disable nounset while sourcing them.
+set +u
 source /opt/ros/jazzy/setup.bash
 source "${install_abs}/setup.bash"
+set -u
 
 node_pid=""
 publisher_pid=""
