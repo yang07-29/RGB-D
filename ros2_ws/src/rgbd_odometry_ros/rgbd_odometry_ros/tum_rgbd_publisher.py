@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 
 import numpy as np
 from PIL import Image
@@ -31,22 +32,29 @@ class TumRgbdPublisher(Node):
         super().__init__("tum_rgbd_publisher")
         dataset = Path(self.declare_parameter("dataset", "data/rgbd_dataset_freiburg1_xyz").value)
         publish_hz = float(self.declare_parameter("publish_hz", 30.0).value)
+        startup_delay_s = float(self.declare_parameter("startup_delay_s", 0.0).value)
         self.loop = bool(self.declare_parameter("loop", False).value)
         self.camera_frame = str(self.declare_parameter("camera_frame", "camera_link").value)
         max_frames = int(self.declare_parameter("max_frames", 0).value)
-        if publish_hz <= 0:
-            raise ValueError("publish_hz must be positive")
+        if publish_hz <= 0 or startup_delay_s < 0:
+            raise ValueError("publish_hz must be positive and startup_delay_s must be non-negative")
         self.frames = associate_rgb_depth(dataset)
         if max_frames > 0:
             self.frames = self.frames[:max_frames]
         self.index = 0
+        self.startup_deadline = time.monotonic() + startup_delay_s
         self.rgb_pub = self.create_publisher(ImageMessage, "/camera/color/image_raw", qos_profile_sensor_data)
         self.depth_pub = self.create_publisher(ImageMessage, "/camera/depth/image_raw", qos_profile_sensor_data)
         self.info_pub = self.create_publisher(CameraInfo, "/camera/camera_info", qos_profile_sensor_data)
         self.timer = self.create_timer(1.0 / publish_hz, self.publish_frame)
-        self.get_logger().info(f"Loaded {len(self.frames)} associated RGB-D pairs from {dataset}")
+        self.get_logger().info(
+            f"Loaded {len(self.frames)} associated RGB-D pairs from {dataset}; "
+            f"startup delay={startup_delay_s:.1f}s"
+        )
 
     def publish_frame(self) -> None:
+        if time.monotonic() < self.startup_deadline:
+            return
         if self.index >= len(self.frames):
             if self.loop:
                 self.index = 0

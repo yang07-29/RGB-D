@@ -71,6 +71,7 @@ sleep 2
 setsid ros2 run rgbd_odometry_ros tum_rgbd_publisher --ros-args \
   -p dataset:="${dataset_abs}" \
   -p publish_hz:=30.0 \
+  -p startup_delay_s:=3.0 \
   -p max_frames:="${expected_frames}" \
   >"${output_abs}/publisher.log" 2>&1 &
 publisher_pid=$!
