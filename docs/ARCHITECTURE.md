@@ -80,4 +80,4 @@ TUM 发布器只输出图像和内参；groundtruth pose 不进入 ROS graph。�
 
 完整运行处理 796/796 帧、最终待处理计数为 0，接受/拒绝 786/9 个帧对；回调均值/中位数/p95 为 11.298/10.010/20.841 ms。60 帧 rosbag 含三个输入话题各 60 条，新节点回放后重新产生 60 行轨迹。RViz 配置把点云 Reliability 明确设为 Best Effort，与节点 sensor-data QoS 一致；真实截图和日志见 `results/ros2/`。
 
-仍未完成的是 Ubuntu 下 ROS2 C++ 节点的编译与运行。独立的非 ROS C++17 核心已在 Windows 全序列实测，但两者不能混为同一条证据。
+GitHub Actions 运行 [30070818522](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30070818522) 已在 Ubuntu 24.04 编译并测试 ROS2 C++ 节点；运行 [30070922101](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30070922101) 已让独立 C++17 核心处理同一 796 帧全序列。仍未完成的是让 ROS2 C++ 节点在 ROS graph 中消费完整序列并记录话题级性能，这三条证据不能混为一条。

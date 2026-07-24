@@ -1,0 +1,68 @@
+name: ros2-cpp-full-sequence
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ros2-cpp-tum-fr1-xyz:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: ros:jazzy-ros-base
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ROS2 runtime and evaluation dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            curl ninja-build libeigen3-dev libopencv-dev \
+            python3-colcon-common-extensions python3-numpy python3-scipy \
+            python3-matplotlib python3-pil python3-psutil \
+            ros-jazzy-ament-cmake-python ros-jazzy-cv-bridge \
+            ros-jazzy-message-filters ros-jazzy-tf2-ros
+      - name: Download official TUM fr1/xyz
+        shell: bash
+        run: |
+          mkdir -p data artifacts/ros2_cpp_linux_full
+          curl --fail --location --retry 3 \
+            https://cvg.cit.tum.de/rgbd/dataset/freiburg1/rgbd_dataset_freiburg1_xyz.tgz \
+            --output /tmp/rgbd_dataset_freiburg1_xyz.tgz
+          sha256sum /tmp/rgbd_dataset_freiburg1_xyz.tgz \
+            | tee artifacts/ros2_cpp_linux_full/dataset_archive_sha256.txt
+          tar -xzf /tmp/rgbd_dataset_freiburg1_xyz.tgz -C data
+      - name: Build ROS2 C++ node
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon --log-base log/ros2 build \
+            --base-paths ros2_ws/src \
+            --build-base build/ros2 \
+            --install-base install/ros2 \
+            --packages-select rgbd_odometry_ros \
+            --cmake-args -DRGBD_ROS_BUILD_CPP=ON -G Ninja
+      - name: Run ROS2 C++ node on all 796 frames
+        shell: bash
+        run: |
+          bash scripts/run_ros2_cpp_full_sequence.sh \
+            data/rgbd_dataset_freiburg1_xyz \
+            artifacts/ros2_cpp_linux_full \
+            install/ros2 \
+            796
+      - name: Record runner environment
+        shell: bash
+        run: |
+          {
+            uname -a
+            g++ --version
+            cmake --version
+            python3 --version
+            source /opt/ros/jazzy/setup.bash
+            ros2 doctor --report || true
+          } > artifacts/ros2_cpp_linux_full/runner_environment.txt 2>&1
+      - name: Upload ROS2 C++ evidence only
+        uses: actions/upload-artifact@v4
+        with:
+          name: ros2-cpp-tum-fr1-xyz-results
+          path: artifacts/ros2_cpp_linux_full
+          if-no-files-found: error
+          retention-days: 30

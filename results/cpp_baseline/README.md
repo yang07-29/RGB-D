@@ -5,7 +5,8 @@
 | 实现 | ATE RMSE (m) | RPE 平移 (m) | RPE 旋转 (°) | 均值 (ms) | p95 (ms) | FPS | RSS 峰值 (MiB) | 接受/拒绝帧对 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Python 3.12 NumPy/SciPy | 0.175859 | 0.011151 | 0.574578 | 15.585 | 27.398 | 64.16 | 160.87 | 786 / 9 |
-| C++17 Eigen/OpenCV | 0.175783 | 0.011151 | 0.574568 | 11.395 | 16.801 | 87.76 | 33.72 | 786 / 9 |
+| Windows C++17 Eigen/OpenCV | 0.175783 | 0.011151 | 0.574568 | 11.395 | 16.801 | 87.76 | 33.72 | 786 / 9 |
+| Ubuntu 24.04 C++17 Eigen/OpenCV | 0.175783 | 0.011151 | 0.574568 | 12.218 | 18.964 | 81.84 | 71.12 | 786 / 9 |
 
 ATE 的绝对差为 0.0000757 m；两者接受/拒绝完全一致，RPE 近似逐位一致。微小 ATE 差异来自不同浮点运算顺序与最近邻平局处理。性能数字只代表此次顺序运行和当前机器，不外推到 Linux、机器人或 Jetson。
 
@@ -24,4 +25,4 @@ sudo apt-get install -y build-essential cmake ninja-build libeigen3-dev libopenc
 ./scripts/build_and_run_cpp.sh data/rgbd_dataset_freiburg1_xyz
 ```
 
-当前版本的 Windows 原始证据在本地 `artifacts/cpp_full_voxel_0.05_corr_0.12/`；版本化的精确数据见 [`benchmark_table.csv`](benchmark_table.csv)。在 Ubuntu 实际运行全序列前，不把 Windows 结果表述成 Linux 实测结果。
+Windows 原始证据在本地 `artifacts/cpp_full_voxel_0.05_corr_0.12/`；Ubuntu 结果来自 GitHub Actions 成功运行 [30070922101](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30070922101)，持久证据见 [`../linux_cpp_full/`](../linux_cpp_full/)。两平台几何指标一致，但延迟和 RSS 必须分别表述。

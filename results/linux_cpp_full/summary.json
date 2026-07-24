@@ -1,0 +1,13 @@
+{
+  "experiment": "C++17 TUM RGB-D frame-to-frame point-to-point ICP odometry",
+  "created_utc": "2026-07-24T06:02:07Z",
+  "dataset": "data/rgbd_dataset_freiburg1_xyz",
+  "parameters": {"stride":8,"voxel_m":0.05,"min_depth_m":0.2,"max_depth_m":4,"max_iterations":30,"max_correspondence_m":0.12,"min_correspondence_ratio":0.5,"max_acceptable_rmse_m":0.12},
+  "frames": {"count":796,"associated_total":796,"point_count_mean":965.762562814,"point_count_min":413,"point_count_max":2111},
+  "quality": {"accepted_pairs":786,"rejected_or_exception_pairs":9},
+  "ate": {"alignment":"SE(3)","rmse_m":0.175783239277,"mean_m":0.15705937535,"median_m":0.146168000476,"max_m":0.39057767687},
+  "rpe_frame_delta_1": {"pairs":795,"translation_rmse_m":0.0111508428758,"translation_mean_m":0.0092731694322,"rotation_rmse_deg":0.574567524578,"rotation_mean_deg":0.494505379181},
+  "performance": {"input_and_preprocessing_latency":{"samples":796,"mean_ms":9.19208455276,"median_ms":9.143198,"p95_ms":9.42701375,"fps_from_mean":108.789251694},"registration_latency":{"samples":786,"mean_ms":3.07592816667,"median_ms":2.092093,"p95_ms":9.81857775,"fps_from_mean":325.105121386},"end_to_end_latency_excluding_first_frame":{"samples":786,"mean_ms":12.218390626,"median_ms":11.2265505,"p95_ms":18.963685,"fps_from_mean":81.8438393904},"process_peak_rss_bytes":74575872,"total_runtime_s":9.765675918},
+  "environment": {"language":"C++17","compiler":"13.3.0","opencv":"4.6.0","eigen":"header-only","gpu":"not used"},
+  "notes": ["Ground truth is evaluation-only.","ICP maps current-camera points into the previous camera frame.","End-to-end latency includes OpenCV RGB/depth reads, back-projection, voxel downsampling, and registration.","ICP correspondence count uses the distance gate; residual RMSE uses all source points, matching the Python baseline."]
+}

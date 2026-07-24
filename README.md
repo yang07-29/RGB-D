@@ -1,8 +1,14 @@
 # RGB-D 点云配准：可复现 TUM 里程计基线
 
+[![tests](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/workflows/tests.yml/badge.svg)](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/workflows/tests.yml)
+[![linux-full-sequence](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/workflows/linux-full-sequence.yml/badge.svg)](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/workflows/linux-full-sequence.yml)
+
+[![tests](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/workflows/tests.yml/badge.svg)](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/workflows/tests.yml)
+[![linux-full-sequence](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/workflows/linux-full-sequence.yml/badge.svg)](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/workflows/linux-full-sequence.yml)
+
 这是一个可检查、可复现的 RGB-D 几何里程计学习工程：包含自实现 NumPy/SciPy point-to-point ICP 与 Open3D point-to-plane ICP，并在本地 **TUM RGB-D `freiburg1/xyz`** 数据集上按同一协议真实评测。它是在重建公开专利技术路线中的几何基础，**不是**对专利中任何计划性能的验证。
 
-当前里程计的 ICP 只使用深度图；RGB 图除时间戳关联外，还用于已经真实训练和评测的轻量回环描述子。离线关键帧、FPFH/RANSAC、学习候选和位姿图均已运行验证。ROS2 Jazzy Python 后端已经在 Windows RoboStack 环境完成 796 帧运行、rosbag2 录制/回放和 RViz 展示；ROS2 C++ 节点只有源码，本机因缺少 Visual Studio 2022 C++ 工具链而未运行。Jetson/机器人部署未做。
+当前里程计的 ICP 只使用深度图；RGB 图除时间戳关联外，还用于已经真实训练和评测的轻量回环描述子。离线关键帧、FPFH/RANSAC、学习候选和位姿图均已运行验证。ROS2 Jazzy Python 后端已经在 Windows RoboStack 环境完成 796 帧运行、rosbag2 录制/回放和 RViz 展示；ROS2 C++ 节点已在 Ubuntu 24.04 GitHub Actions 中编译和测试，但尚未完成 C++ ROS graph 全序列运行。Jetson/机器人部署未做。
 
 ## 已实际运行的架构
 
@@ -57,6 +63,8 @@ powershell -ExecutionPolicy Bypass -File scripts\run_parameter_sweep.ps1
 
 同协议的 C++17/Eigen/OpenCV 全序列实现也已在本机真实运行。0.05/0.12 配置下，Python 与 C++ 都接受 786、拒绝 9 个帧对；C++ ATE RMSE 为 **0.175783 m**，端到端均值 **11.395 ms**、p95 **16.801 ms**、RSS 峰值 **33.72 MiB**。与 Python 的逐项公平对比见 [`results/cpp_baseline/README.md`](results/cpp_baseline/README.md)。这些是 Windows 实测，不冒充 Linux 实测。
 
+同一提交随后由 GitHub Actions 在 Ubuntu 24.04 下载 TUM 官方数据并真实运行全部 796 帧：接受/拒绝仍为 **786/9**，ATE/RPE 与 Windows C++ 一致；端到端均值 **12.218 ms**、p95 **18.964 ms**、**81.84 FPS**、RSS 峰值 **71.12 MiB**。工作流 [30070922101](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30070922101) 及持久结果见 [`results/linux_cpp_full/`](results/linux_cpp_full/)。不同 runner 的性能不可直接归因于操作系统。
+
 关键帧/位姿图也已在同一序列真实运行：从 796 帧选择 129 个关键帧，30 个回环候选全部通过无真值几何门限，事后真值检查均正确；关键帧 ATE RMSE 从 **0.040787 m** 降到 **0.023802 m**，下降 **41.64%**。两个由估计轨迹远距离选出的错误 hard-negative 均被门限拒绝。完整协议、前后 RPE 与失败案例见 [`results/pose_graph/README.md`](results/pose_graph/README.md)。
 
 轻量回环实验采用严格的跨序列划分：`fr1/desk` 训练、`fr1/desk2` 验证选阈值、`fr1/xyz` 最终测试。HSV、MobileNetV3 无 SE、MobileNetV3+SE 的测试 Recall@1 分别为 **0.9291 / 0.9574 / 0.9574**，Recall@5 为 **0.9433 / 0.9787 / 0.9787**；带 SE 模型测试 pair-F1 为 **0.6768**。冻结的带 SE 描述子接入相同几何验证和位姿图后，关键帧 ATE 从 **0.040787 m** 降到 **0.024579 m**，下降 **39.74%**。30 个边中事后真值标记 28 个正确、2 个略超 5 cm 正确门槛的错误边，作为真实失败保留。完整协议与结果见 [`results/loop_learning/README.md`](results/loop_learning/README.md)。
@@ -72,7 +80,7 @@ ROS2 Jazzy 的 Windows RoboStack 运行也复用了完全相同的 796 帧和 0.
 - C++17/CMake 版本：OpenCV 读取 RGB-D、Eigen SVD/Kabsch、精确 3D KD-tree、体素下采样、point-to-point ICP、位姿累积、ATE/RPE、CTest 与全序列性能记录。
 - 关键帧、估计轨迹回环候选、FPFH/RANSAC 全局初值、point-to-plane ICP 验证、Open3D 位姿图优化、正确/错误候选后验分析与优化地图 PLY。
 - 序列隔离的回环标签与检索协议、HSV 基线、MobileNetV3 无 SE/有 SE 消融、Triplet loss 训练、Recall@1/5 与 precision/recall、GPU 推理性能、学习候选接入几何验证和位姿图。
-- ROS2 Jazzy TUM 模拟发布器、RGB/depth 近似同步、CameraInfo、Python ICP 节点、`/odom`/`/path`/`/cloud`/TF、逐帧性能与 TUM 轨迹、rosbag2 录制/回放和 RViz；Windows RoboStack 已运行验证，ROS2 C++ 节点仍只有源码。
+- ROS2 Jazzy TUM 模拟发布器、RGB/depth 近似同步、CameraInfo、Python ICP 节点、`/odom`/`/path`/`/cloud`/TF、逐帧性能与 TUM 轨迹、rosbag2 录制/回放和 RViz；Windows RoboStack 数据链路已运行，ROS2 C++ 节点已在 Ubuntu 24.04 CI 编译和测试。
 
 ## 可展示效果
 
@@ -200,7 +208,7 @@ Ubuntu 安装 `build-essential cmake ninja-build libeigen3-dev libopencv-dev` �
 ./scripts/build_and_run_cpp.sh data/rgbd_dataset_freiburg1_xyz
 ```
 
-GitHub Actions 会在 Ubuntu 上编译并运行 C++ 单元测试，并编译 ROS2 Jazzy C++ 节点。手动工作流 `.github/workflows/linux-full-sequence.yml` 会从 TUM 官方地址下载 `fr1/xyz`、运行全部 796 帧并上传仅含结果的 artifact；在该工作流真正成功前，README 不把 Linux 全序列写成已完成。
+GitHub Actions 已在运行 [30070818522](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30070818522) 中通过 Python 3.12/3.13、独立 C++ 单元测试及 ROS2 Jazzy C++ 编译/测试。手动工作流 [30070922101](https://github.com/yang07-29/rgbd-pointcloud-registration/actions/runs/30070922101) 从 TUM 官方地址下载 `fr1/xyz` 并成功运行全部 796 帧；版本化证据见 [`results/linux_cpp_full/`](results/linux_cpp_full/)。
 
 ### 关键帧、回环与位姿图
 
@@ -256,7 +264,7 @@ Windows 运行器显式隔离 PATH，以避免用户全局 Anaconda DLL 与 Robo
 
 ## 当前局限与下一步工程
 
-Point-to-point 和当前 point-to-plane ICP 都对深度噪声、动态像素、重复几何和累计漂移敏感。学习描述子只在三个 TUM 室内序列上训练/验证/测试，不足以证明跨数据集泛化；其几何门限还接受了两个略超预定 5 cm 正确标准的边。ROS2 当前只在 Windows RoboStack 上验证 Python 后端；Ubuntu 下的 ROS2 C++ 节点编译/运行、更多公开序列、实机传感器、Jetson 和机器人仍未验证。
+Point-to-point 和当前 point-to-plane ICP 都对深度噪声、动态像素、重复几何和累计漂移敏感。学习描述子只在三个 TUM 室内序列上训练/验证/测试，不足以证明跨数据集泛化；其几何门限还接受了两个略超预定 5 cm 正确标准的边。ROS2 Python 话题/rosbag/RViz 运行证据来自 Windows RoboStack；Ubuntu CI 已证明 ROS2 C++ 可以编译和通过测试，但尚未证明 C++ ROS graph 全序列运行。更多公开序列、实机传感器、Jetson 和机器人仍未验证。
 
 不要将当前结果表述为整项专利验证、ROS2 C++ 实时性能、机器人/Jetson 部署、跨数据集泛化或 SOTA 基准。[`EVIDENCE_LOG.md`](EVIDENCE_LOG.md) 明确记录了这个边界。
 
@@ -270,8 +278,8 @@ Point-to-point 和当前 point-to-plane ICP 都对深度噪声、动态像素、
 
 ## 后续路线
 
-1. 已完成 Python/Open3D 公平基线、3×3 参数表、C++17/CMake 核心热路径、关键帧/传统回环/位姿图、序列隔离的 MobileNetV3/SE 回环实验，以及 Windows RoboStack ROS2 Python/rosbag/RViz 链路。
-2. 下一步在 Ubuntu 24.04/WSL 或 CI 中编译并运行 ROS2 C++ 节点，用相同 796 帧协议与 Python ROS2 后端比较。
+1. 已完成 Python/Open3D 公平基线、3×3 参数表、Windows 与 Ubuntu C++17 全序列、关键帧/传统回环/位姿图、序列隔离的 MobileNetV3/SE 回环实验，以及 Windows RoboStack ROS2 Python/rosbag/RViz 链路。
+2. 已在 Ubuntu 24.04 CI 编译和测试 ROS2 C++ 节点；下一步是让 C++ 节点在 ROS graph 中消费相同 796 帧并与 Python ROS2 后端比较。
 3. 随后补充更多公开序列和负例，改善学习回环的几何门限与泛化评测。
 4. 没有真实 Jetson/机器人硬件时，不声称硬件部署结果。
 

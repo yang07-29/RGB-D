@@ -1,0 +1,1 @@
+a0236d97b8c30cd93b653656d2b6c293ff7c982a4130ef2a1a8beecdb124ef98  /tmp/rgbd_dataset_freiburg1_xyz.tgz

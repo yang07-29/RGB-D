@@ -8,11 +8,11 @@ This file separates verified work from patent-plan statements. Do not copy a cla
 | Synthetic point-cloud registration baseline | Verified after tests pass | Test command output, commit hash, `artifacts/synthetic/icp_before_after.png` | "Implemented and tested a NumPy/SciPy point-to-point ICP baseline on controlled synthetic point clouds." |
 | RGB-D back-projection | Verified on real data | `artifacts/tum_fr1_xyz_full/summary.json`: 796 timestamp-associated frames and 413--2111 post-voxel points/frame | "Implemented calibrated RGB-D depth back-projection and voxelized point clouds on TUM fr1/xyz." |
 | Real TUM RGB-D registration | Verified baselines; not competitive | `results/parameter_sweep/benchmark_table.csv`, 18 source `summary.json` files, trajectories and step CSVs | "Implemented and evaluated point-to-point and Open3D point-to-plane ICP RGB-D odometry baselines over 9 parameter settings on all 796 valid TUM fr1/xyz associations. Best ATE RMSE was 0.054045 m; drift remains and the method is not presented as SOTA or full SLAM." |
-| C++17/CMake hot path | Verified on Windows; Ubuntu full-sequence run pending | `cpp/`, CTest output, `results/cpp_baseline/benchmark_table.csv`, `artifacts/cpp_full_voxel_0.05_corr_0.12/summary.json` | "Migrated RGB-D loading/back-projection, voxel downsampling, exact KD-tree ICP, pose accumulation and ATE/RPE to C++17 with Eigen/OpenCV/CMake; the 796-frame Windows run matched Python acceptance counts and near-matched trajectory metrics." |
+| C++17/CMake hot path | Verified on Windows and Ubuntu 24.04 | `cpp/`, CTest output, `results/cpp_baseline/`, `results/linux_cpp_full/`, GitHub run `30070922101` | "Migrated RGB-D loading/back-projection, voxel downsampling, exact KD-tree ICP, pose accumulation and ATE/RPE to C++17 with Eigen/OpenCV/CMake; Windows and Ubuntu runs reproduced all 796 frames with identical trajectory metrics." |
 | Keyframes, loop closure, pose graph | Verified offline on TUM fr1/xyz | `src/pose_graph_slam.py`, `results/pose_graph/`, local optimized pose graph/PLY/CSV/plots | "Selected 129 keyframes, verified FPFH/RANSAC loop candidates with ICP and optimized an Open3D pose graph; keyframe ATE RMSE decreased from 0.040787 m to 0.023802 m, while two odometry-distant hard negatives were rejected." |
 | Lightweight learned loop descriptor | Verified offline on three sequence-isolated TUM splits | `src/train_loop_descriptor.py`, `results/loop_learning/`, local checkpoints/descriptors, 10-epoch history across two variants | "Trained and ablated MobileNetV3-Small loop descriptors with/without SE using fr1/desk train, fr1/desk2 validation and held-out fr1/xyz test; the SE model reached 0.9574/0.9787 Recall@1/5 and 0.6768 pair F1 under the recorded protocol." |
 | Learned candidates in pose graph | Verified offline on TUM fr1/xyz | `results/loop_learning/learned_pose_graph_*`, plots and local pose graph/map | "Fed frozen RGB descriptors into geometry-verified loop discovery; keyframe ATE decreased from 0.040787 m to 0.024579 m. Post-hoc GT labelled 28 accepted edges correct and 2 slightly beyond the predeclared 5 cm criterion." |
-| ROS2 integration | Python backend verified on Windows RoboStack; ROS2 C++ runtime unverified | `results/ros2/`, `ros2_ws/`, local full-run/rosbag/RViz artifacts | "Ran a ROS2 Jazzy Python RGB-D odometry node on all 796 TUM associations, published odom/path/cloud/TF, recorded and replayed a 60-frame rosbag, and verified RViz on Windows RoboStack." Do not relabel this as Ubuntu, ROS2 C++, robot, or Jetson evidence. |
+| ROS2 integration | Python runtime verified on Windows RoboStack; C++ build/test verified on Ubuntu CI | `results/ros2/`, `ros2_ws/`, GitHub run `30070818522`, local full-run/rosbag/RViz artifacts | "Ran a ROS2 Jazzy Python RGB-D odometry node on all 796 TUM associations, published odom/path/cloud/TF, recorded/replayed a rosbag and verified RViz; separately compiled and tested the ROS2 C++ node on Ubuntu 24.04." Do not relabel the CI result as C++ ROS graph runtime, robot, or Jetson evidence. |
 | Jetson/robot deployment | Not implemented/verified in this rebuild | Hardware/model/version, commands, runtime and memory logs | Do not claim 5 Hz, memory savings, or on-device deployment. |
 
 ## Result record template
@@ -40,8 +40,9 @@ Protocol: same 796 frames and 0.05 m / 0.12 m point-to-point configuration as th
 Accepted/rejected pairs: 786 / 9 in both implementations
 C++ ATE / RPE translation / RPE rotation: 0.175783 m / 0.011151 m / 0.574568 deg
 C++ end-to-end mean / p95 / RSS peak: 11.395 ms / 16.801 ms / 33.72 MiB
-Evidence: results/cpp_baseline/ and artifacts/cpp_full_voxel_0.05_corr_0.12/
-Boundary: Windows full-sequence evidence only; Ubuntu currently has compile/test workflow but no local full-sequence measurement.
+Ubuntu evidence: GitHub run 30070922101; same 796 frames; ATE/RPE 0.175783 m / 0.011151 m / 0.574568 deg; mean/p95 12.218/18.964 ms; RSS 71.12 MiB
+Evidence: results/cpp_baseline/, results/linux_cpp_full/, and artifacts/cpp_full_voxel_0.05_corr_0.12/
+Boundary: Windows and GitHub-hosted Ubuntu measurements are separate machines; performance differences cannot be attributed only to the OS.
 ```
 
 ```text
@@ -79,7 +80,7 @@ Peak process RSS: 98,025,472 bytes (93.48 MiB)
 rosbag evidence: 60 RGB + 60 depth + 60 CameraInfo messages; fresh-node replay processed 60/60
 RViz evidence: 1280x800 real window capture, Global Status OK, path/cloud/TF enabled and cloud visible
 Evidence: results/ros2/ and local artifacts/ros2_full_fr1_xyz, ros2_bag_roundtrip, ros2_rviz_demo
-Boundary: not an Ubuntu run, not ROS2 C++ runtime evidence, and not a robot or Jetson deployment.
+Boundary: the ROS graph runtime evidence is Windows/Python. Ubuntu run 30070818522 proves ROS2 C++ compilation/tests only, not C++ full-sequence topic performance, robot or Jetson deployment.
 ```
 
 ## Non-negotiable rule

@@ -10,5 +10,6 @@
 - [x] 完成 NumPy/SciPy、Open3D point-to-plane 与 C++17 公平基线。
 - [x] 完成关键帧、回环、位姿图、学习描述子与限定平台的 ROS2/RViz 验证。
 - [x] 在 `EVIDENCE_LOG.md` 和结果文档中记录成功结果、失败案例与真实性边界。
-- [ ] 在 GitHub Actions 中完成 Ubuntu、ROS2 C++ 和 Linux 796 帧全序列验证。
+- [x] 在 GitHub Actions 中完成 Ubuntu C++/ROS2 C++ 编译测试和 Linux 796 帧核心全序列验证。
+- [ ] 完成 ROS2 C++ 节点的 ROS graph 796 帧运行与 Python 后端公平比较。
 - [ ] 真实 Jetson/机器人部署；没有硬件证据前保持未完成状态。
