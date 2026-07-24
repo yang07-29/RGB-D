@@ -56,7 +56,7 @@ jobs:
             --build-base build/ros2 \
             --install-base install/ros2 \
             --packages-select rgbd_odometry_ros \
-            --cmake-args -DRGBD_ROS_BUILD_CPP=ON -G Ninja
+            --cmake-args -DRGBD_ROS_BUILD_CPP=ON -DCMAKE_BUILD_TYPE=Release -G Ninja
       - name: Run embedded C++ tests
         shell: bash
         run: |

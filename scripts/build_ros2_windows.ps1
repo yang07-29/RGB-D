@@ -31,7 +31,7 @@ Push-Location $workspace
 try {
     & (Join-Path $prefix "Scripts\colcon.exe") build --merge-install `
         --packages-select rgbd_odometry_ros rgbd_odometry_py `
-        --cmake-args "-DRGBD_ROS_BUILD_CPP=$cppOption" -G Ninja
+        --cmake-args "-DRGBD_ROS_BUILD_CPP=$cppOption" -DCMAKE_BUILD_TYPE=Release -G Ninja
     if ($LASTEXITCODE -ne 0) { throw "colcon build failed with exit code $LASTEXITCODE" }
 }
 finally {
