@@ -74,6 +74,7 @@ setsid ros2 run rgbd_odometry_ros tum_rgbd_publisher --ros-args \
   -p publish_hz:=30.0 \
   -p startup_delay_s:=3.0 \
   -p reliable_qos:=true \
+  -p flush_after_done:=true \
   -p max_frames:="${expected_frames}" \
   >"${output_abs}/publisher.log" 2>&1 &
 publisher_pid=$!
@@ -134,8 +135,10 @@ performance = json.loads((output / "performance.json").read_text(encoding="utf-8
 evaluation = json.loads((output / "evaluation" / "evaluation.json").read_text(encoding="utf-8"))
 if len(rows) != expected or len(trajectory) != expected:
     raise SystemExit(f"expected {expected} metrics/poses, got {len(rows)}/{len(trajectory)}")
-if performance["unsynchronized_or_pending_final"] != 0:
-    raise SystemExit("final pending count is non-zero")
+if performance["unsynchronized_or_pending_final"] not in (0, 1):
+    raise SystemExit("unexpected final pending count after the deliberate synchronizer flush pair")
+if performance["rgb_received_final"] < expected or performance["depth_received_final"] < expected:
+    raise SystemExit("fewer than the expected source messages were received")
 if evaluation["frames"] != expected:
     raise SystemExit("evaluation frame count mismatch")
 summary = {
@@ -147,6 +150,7 @@ summary = {
     "callback_latency_ms": performance["callback_latency_ms"],
     "process_peak_rss_bytes": performance["process_peak_rss_bytes"],
     "ate_rpe": evaluation["metrics"],
+    "synchronizer_flush": "one later timestamp pair is sent only to release the final real pair; it is not in the trajectory",
     "ground_truth_usage": "evaluation only; poses are not published or read by the odometry node",
 }
 (output / "run_summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")

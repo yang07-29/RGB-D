@@ -34,6 +34,7 @@ class TumRgbdPublisher(Node):
         publish_hz = float(self.declare_parameter("publish_hz", 30.0).value)
         startup_delay_s = float(self.declare_parameter("startup_delay_s", 0.0).value)
         reliable_qos = bool(self.declare_parameter("reliable_qos", False).value)
+        flush_after_done = bool(self.declare_parameter("flush_after_done", False).value)
         self.loop = bool(self.declare_parameter("loop", False).value)
         self.camera_frame = str(self.declare_parameter("camera_frame", "camera_link").value)
         max_frames = int(self.declare_parameter("max_frames", 0).value)
@@ -42,6 +43,12 @@ class TumRgbdPublisher(Node):
         self.frames = associate_rgb_depth(dataset)
         if max_frames > 0:
             self.frames = self.frames[:max_frames]
+        self.playback_frames = list(self.frames)
+        if flush_after_done and not self.loop:
+            rgb_timestamp, depth_timestamp, rgb_path, depth_path = self.frames[-1]
+            self.playback_frames.append(
+                (rgb_timestamp + 1.0, depth_timestamp + 1.0, rgb_path, depth_path)
+            )
         self.index = 0
         self.startup_deadline = time.monotonic() + startup_delay_s
         with Image.open(self.frames[0][2]) as first_rgb:
@@ -58,7 +65,8 @@ class TumRgbdPublisher(Node):
         self.timer = self.create_timer(1.0 / publish_hz, self.publish_frame)
         self.get_logger().info(
             f"Loaded {len(self.frames)} associated RGB-D pairs from {dataset}; "
-            f"startup delay={startup_delay_s:.1f}s qos={'reliable' if reliable_qos else 'best_effort'}"
+            f"startup delay={startup_delay_s:.1f}s qos={'reliable' if reliable_qos else 'best_effort'} "
+            f"flush_after_done={flush_after_done}"
         )
 
     def make_camera_info(self, stamp, height: int, width: int) -> CameraInfo:
@@ -80,14 +88,17 @@ class TumRgbdPublisher(Node):
                 self.make_camera_info(to_stamp(self.frames[0][0]), self.image_height, self.image_width)
             )
             return
-        if self.index >= len(self.frames):
+        if self.index >= len(self.playback_frames):
             if self.loop:
                 self.index = 0
             else:
                 self.timer.cancel()
-                self.get_logger().info("Finished publishing TUM sequence")
+                self.get_logger().info(
+                    f"Finished publishing {len(self.frames)} TUM frames"
+                    f"{' plus one synchronizer flush pair' if len(self.playback_frames) > len(self.frames) else ''}"
+                )
                 return
-        rgb_timestamp, depth_timestamp, rgb_path, depth_path = self.frames[self.index]
+        rgb_timestamp, depth_timestamp, rgb_path, depth_path = self.playback_frames[self.index]
         rgb = np.asarray(Image.open(rgb_path).convert("RGB"), dtype=np.uint8)
         depth = np.asarray(Image.open(depth_path), dtype=np.uint16)
         rgb_stamp = to_stamp(rgb_timestamp)
