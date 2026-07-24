@@ -21,14 +21,16 @@ if(RGBD_ROS_BUILD_CPP)
   set(RGBD_BUILD_APPS OFF CACHE BOOL "" FORCE)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../cpp ${CMAKE_CURRENT_BINARY_DIR}/rgbd_core)
   add_executable(rgbd_odometry_node src/rgbd_odometry_node.cpp)
-  target_link_libraries(rgbd_odometry_node PRIVATE rgbd_core)
+  # ament_target_dependencies uses CMake's plain target_link_libraries
+  # signature, so keep every link call for this target in the same form.
+  target_link_libraries(rgbd_odometry_node rgbd_core)
   ament_target_dependencies(
     rgbd_odometry_node
     rclcpp builtin_interfaces sensor_msgs nav_msgs geometry_msgs tf2_ros message_filters cv_bridge
   )
   if(MSVC)
     target_compile_options(rgbd_odometry_node PRIVATE /W4 /permissive-)
-    target_link_libraries(rgbd_odometry_node PRIVATE Psapi)
+    target_link_libraries(rgbd_odometry_node Psapi)
   else()
     target_compile_options(rgbd_odometry_node PRIVATE -Wall -Wextra -Wpedantic)
   endif()
