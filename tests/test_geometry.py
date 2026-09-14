@@ -25,6 +25,29 @@ class GeometryTests(unittest.TestCase):
         self.assertLess(result.rmse, 1e-7)
         np.testing.assert_allclose(result.aligned_source, self.target, atol=1e-7)
 
+    def test_icp_uses_a_rigid_initial_transform(self):
+        far_target = self.target + np.array([0.5, 0.0, 0.0])
+        with self.assertRaises(RuntimeError):
+            icp_point_to_point(self.source, far_target, max_correspondence_distance=0.2)
+
+        initial = np.eye(4)
+        initial[:3, :3] = self.rotation
+        initial[:3, 3] = self.translation + np.array([0.5, 0.0, 0.0])
+        result = icp_point_to_point(
+            self.source,
+            far_target,
+            max_correspondence_distance=0.2,
+            initial_transform=initial,
+        )
+        self.assertLess(result.rmse, 1e-7)
+        np.testing.assert_allclose(result.aligned_source, far_target, atol=1e-7)
+
+    def test_icp_rejects_non_rigid_initial_transform(self):
+        initial = np.eye(4)
+        initial[0, 0] = 2.0
+        with self.assertRaisesRegex(ValueError, r"SE\(3\)"):
+            icp_point_to_point(self.source, self.target, initial_transform=initial)
+
     def test_voxel_downsample_reduces_points(self):
         points = np.array([[0.01, 0.01, 0.01], [0.02, 0.02, 0.02], [1.0, 1.0, 1.0]])
         downsampled = voxel_downsample(points, voxel_size=0.1)

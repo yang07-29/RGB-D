@@ -1,0 +1,221 @@
+{
+  "experiment": "TUM RGB-D fr1/xyz multi-frame odometry",
+  "created_utc": "2026-09-14T13:00:50.424512+00:00",
+  "dataset": "data\\rgbd_dataset_freiburg1_xyz",
+  "association_protocol": "one_to_one_minimum_offset_greedy_v2",
+  "parameters": {
+    "dataset": "data\\rgbd_dataset_freiburg1_xyz",
+    "ground_truth": null,
+    "no_evaluation": false,
+    "output": "artifacts\\tracking_stress_one_to_one_v2\\step_2\\predictive_recovery",
+    "max_frames": null,
+    "frame_step": 2,
+    "stride": 8,
+    "voxel": 0.05,
+    "min_depth": 0.2,
+    "max_depth": 4.0,
+    "max_iterations": 30,
+    "max_correspondence": 0.08,
+    "min_correspondence_ratio": 0.5,
+    "max_acceptable_rmse": 0.08,
+    "tracking_mode": "predictive_recovery",
+    "recovery_coarse_voxel": 0.12,
+    "recovery_distance_multiplier": 4.0,
+    "lost_after": 2,
+    "quiet": true
+  },
+  "frames": {
+    "count": 395,
+    "first_timestamp": 1305031102.175304,
+    "last_timestamp": 1305031128.711457,
+    "mean_rgb_depth_offset_s": 0.006229167044917239,
+    "mean_rgb_ground_truth_offset_s": 0.0029686426814598374,
+    "point_counts": {
+      "mean": 967.4278481012658,
+      "min": 425,
+      "max": 2111
+    }
+  },
+  "evaluation": {
+    "available": true,
+    "ground_truth_path": "data\\rgbd_dataset_freiburg1_xyz\\groundtruth.txt",
+    "reason": null
+  },
+  "methods": [
+    {
+      "method": "identity_no_motion_baseline",
+      "ate": {
+        "rmse_m": 0.18623461189009638,
+        "mean_m": 0.1656775570890156,
+        "median_m": 0.15404991593625553,
+        "max_m": 0.3609787204254125
+      },
+      "rpe_frame_delta_1": {
+        "frame_delta": 1,
+        "pairs": 394,
+        "translation_rmse_m": 0.02234367238014987,
+        "translation_mean_m": 0.020300104163782858,
+        "rotation_rmse_deg": 1.257991863807934,
+        "rotation_mean_deg": 1.0779056542929017
+      },
+      "alignment_estimated_to_ground_truth": {
+        "rotation": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation_m": [
+          1.2477574683544288,
+          0.6098351898734176,
+          1.5479756962025326
+        ]
+      },
+      "rpe_frame_delta_30": {
+        "frame_delta": 30,
+        "pairs": 365,
+        "translation_rmse_m": 0.3418555891937613,
+        "translation_mean_m": 0.29535341582824215,
+        "rotation_rmse_deg": 12.688523792343526,
+        "rotation_mean_deg": 10.693114142203898
+      }
+    },
+    {
+      "method": "point_to_point_icp_predictive_recovery",
+      "ate": {
+        "rmse_m": 0.10874812123514348,
+        "mean_m": 0.09409533859015216,
+        "median_m": 0.07581616143280984,
+        "max_m": 0.28365845073733315
+      },
+      "rpe_frame_delta_1": {
+        "frame_delta": 1,
+        "pairs": 394,
+        "translation_rmse_m": 0.01695142106311346,
+        "translation_mean_m": 0.013804550331229464,
+        "rotation_rmse_deg": 0.9355715056357473,
+        "rotation_mean_deg": 0.76155080352906
+      },
+      "alignment_estimated_to_ground_truth": {
+        "rotation": [
+          [
+            -0.06341659506667474,
+            0.5081738001793463,
+            -0.8589165991418677
+          ],
+          [
+            0.9916084219384028,
+            -0.06506641535075892,
+            -0.11170988825629577
+          ],
+          [
+            -0.11265466262423772,
+            -0.8587931942002598,
+            -0.4997831295515433
+          ]
+        ],
+        "translation_m": [
+          1.4724183917029343,
+          0.6200210177454455,
+          1.7529982640289363
+        ]
+      },
+      "rpe_frame_delta_30": {
+        "frame_delta": 30,
+        "pairs": 365,
+        "translation_rmse_m": 0.1744810510325814,
+        "translation_mean_m": 0.1379202053551232,
+        "rotation_rmse_deg": 4.989460184948904,
+        "rotation_mean_deg": 4.212621060853194
+      }
+    }
+  ],
+  "tracking": {
+    "lost_after_consecutive_failures": 2,
+    "lost_events": 3,
+    "recovered_lost_events": 3,
+    "unrecovered_lost_events": 0,
+    "recovery_attempts": 6,
+    "successful_recovery_attempts": 3,
+    "recovery_attempt_success_rate": 0.5,
+    "mean_lost_event_recovery_frames": 3.0,
+    "max_lost_event_recovery_frames": 3
+  },
+  "icp_performance": {
+    "accepted_pairs": 366,
+    "rejected_or_exception_pairs": 28,
+    "registration_latency": {
+      "samples": 366,
+      "mean_s": 0.029369396448069258,
+      "median_s": 0.024747250000473286,
+      "p95_s": 0.06767064999939976,
+      "fps_from_mean": 34.04904836121479
+    },
+    "rgbd_read_latency": {
+      "samples": 395,
+      "mean_s": 0.008743236708922476,
+      "median_s": 0.008333600000696606,
+      "p95_s": 0.01201099999962025,
+      "fps_from_mean": 114.37411948134718
+    },
+    "preprocessing_latency": {
+      "samples": 395,
+      "mean_s": 0.0018215481013198135,
+      "median_s": 0.0017501999991509365,
+      "p95_s": 0.002490059999581717,
+      "fps_from_mean": 548.983581205154
+    },
+    "end_to_end_latency_excluding_first_frame": {
+      "samples": 366,
+      "mean_s": 0.03988724098370931,
+      "median_s": 0.03554519999943295,
+      "p95_s": 0.07823549999966417,
+      "fps_from_mean": 25.070673612356856
+    },
+    "mean_iterations": 14.193989071038251,
+    "total_runtime_s": 16.55102540000007,
+    "cloud_construction_runtime_s": 4.173090000045704,
+    "process_rss": {
+      "sampling": "before the run, after every frame preprocessing and registration, and at experiment end",
+      "peak_bytes": 136957952,
+      "final_bytes": 136957952
+    }
+  },
+  "environment": {
+    "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:26:47) [MSC v.1942 64 bit (AMD64)]",
+    "numpy": "2.4.4",
+    "scipy": "1.16.3",
+    "pillow": "12.2.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "logical_cpu_count": 24,
+    "gpu": "not used (CPU-only NumPy/SciPy baseline)"
+  },
+  "artifacts": [
+    "trajectory_icp_local.txt",
+    "icp_steps.csv",
+    "frame_timings.csv",
+    "trajectory_icp_ate_aligned.txt",
+    "trajectory_identity_ate_aligned.txt",
+    "trajectory_xy_xz.png"
+  ],
+  "quality_protocol": "shared_nearest_neighbor_v2: final-transform source-to-target; gated correspondence ratio and inlier RMSE; all-source-point RMSE for residual rejection",
+  "notes": [
+    "ICP uses only consecutive depth point clouds and an identity relative-pose initialization.",
+    "A pair is rejected when the shared final-transform correspondence ratio is too low or all-source-point nearest-neighbor RMSE is too high; rejected pairs retain the previous pose.",
+    "RGB images are read for end-to-end RGB-D input timing but are not used by this depth-only ICP solver.",
+    "Ground truth is optional and, when present, is attached only after RGB-D association for evaluation.",
+    "Identity is reported only when evaluation ground truth is available."
+  ]
+}

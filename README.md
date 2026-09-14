@@ -51,6 +51,18 @@ C++ 的逐帧 CSV、未对齐轨迹和 summary 见 [`results/cpp_one_to_one_qual
 
 我用 evo 1.37.1 重新读取保存的 Open3D 轨迹。ATE 只做 SE(3) Umeyama 对齐，没有 scale correction；Δ=30 RPE 使用全部 760 个重叠帧对。ATE、Δ=1/30 平移 RPE 和旋转 RPE 五项与项目实现的最大绝对差为 `1.065e-09`。机器可读差值和五个 evo 原始结果包见 [`results/evo_crosscheck_one_to_one_v2/`](results/evo_crosscheck_one_to_one_v2/)。
 
+### 跟踪丢失与恢复
+
+连续 2 个帧对被拒绝时记为一次 LOST。可选的 `predictive_recovery` 模式会在单位初值失败后尝试恒速初值、粗到细 ICP、最近有效关键帧和内部暂定位姿链。为了模拟更快运动和更低重叠，我分别每次跳过 0、1、2 帧运行完整序列。
+
+| frame step | 基线 ATE（m） | 恢复模式 ATE（m） | 恢复尝试成功 | 恢复模式 mean / p95（ms） |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 0.180483 | 0.180483 | 0 / 0 | 28.45 / 55.16 |
+| 2 | 0.107069 | 0.108748 | 3 / 6 | 39.89 / 78.24 |
+| 3 | 0.239388 | **0.196357** | 5 / 13 | 46.92 / 91.78 |
+
+恢复模式在正常输入上保持相同轨迹但增加延迟；step=2 略差；step=3 的 ATE 下降约 18%，但短间隔 RPE 从 `0.024050 m / 1.223°` 变差到 `0.028843 m / 1.471°`。因此它作为实验选项保留，没有替换默认基线。六次原始 summary 和完整表格见 [`results/tracking_stress_one_to_one_v2/`](results/tracking_stress_one_to_one_v2/)。
+
 ## 效果图
 
 真实深度图反投影后的点云：
@@ -137,6 +149,9 @@ powershell -ExecutionPolicy Bypass -File scripts\run_multi_sequence_benchmark.ps
 # 独立核对保存轨迹的 ATE/RPE
 .\.conda-open3d\python.exe -m pip install -r requirements-evaluation.lock.txt
 powershell -ExecutionPolicy Bypass -File scripts\run_evo_crosscheck.ps1
+
+# 跟踪丢失与跳帧压力实验
+powershell -ExecutionPolicy Bypass -File scripts\run_tracking_stress.ps1
 ```
 
 真值文件不是里程计的必需输入。对没有 `groundtruth.txt` 的 RGB-D 目录，或者希望显式关闭评测时：

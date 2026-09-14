@@ -107,6 +107,7 @@ def icp_point_to_point(
     max_iterations: int = 80,
     tolerance: float = 1e-8,
     max_correspondence_distance: float | None = None,
+    initial_transform: Array | None = None,
 ) -> ICPResult:
     """使用最近邻匹配和 Kabsch 更新的点到点 ICP。
 
@@ -116,9 +117,23 @@ def icp_point_to_point(
     target = as_points(target)
     tree = cKDTree(target)
 
-    aligned = source.copy()
-    total_rotation = np.eye(3)
-    total_translation = np.zeros(3)
+    if initial_transform is None:
+        total_rotation = np.eye(3)
+        total_translation = np.zeros(3)
+    else:
+        initial_transform = np.asarray(initial_transform, dtype=float)
+        if initial_transform.shape != (4, 4) or not np.isfinite(initial_transform).all():
+            raise ValueError("initial_transform must be a finite 4x4 SE(3) matrix")
+        rotation = initial_transform[:3, :3]
+        if (
+            not np.allclose(initial_transform[3], [0.0, 0.0, 0.0, 1.0], atol=1e-8)
+            or not np.allclose(rotation.T @ rotation, np.eye(3), atol=1e-5)
+            or not np.isclose(np.linalg.det(rotation), 1.0, atol=1e-5)
+        ):
+            raise ValueError("initial_transform must be a rigid SE(3) transform")
+        total_rotation = rotation.copy()
+        total_translation = initial_transform[:3, 3].copy()
+    aligned = transform_points(source, total_rotation, total_translation)
     previous_rmse = np.inf
 
     for iteration in range(1, max_iterations + 1):

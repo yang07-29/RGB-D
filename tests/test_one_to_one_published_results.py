@@ -69,3 +69,18 @@ def test_evo_crosscheck_is_within_frozen_tolerance():
     assert report["comparisons"]["ate_translation"]["samples"] == 790
     assert report["comparisons"]["rpe_delta1_translation"]["samples"] == 789
     assert report["comparisons"]["rpe_delta30_translation"]["samples"] == 760
+
+
+def test_tracking_stress_report_preserves_baseline_and_records_tradeoff():
+    result = ROOT / "results" / "tracking_stress_one_to_one_v2"
+    rows = _rows(result / "benchmark_table.csv")
+    assert len(rows) == 6
+    assert {(row["frame_step"], row["tracking_mode"]) for row in rows} == {
+        (step, mode) for step in ("1", "2", "3") for mode in ("identity", "predictive_recovery")
+    }
+    assert all((ROOT / Path(row["summary_path"])).is_file() for row in rows)
+    by_key = {(row["frame_step"], row["tracking_mode"]): row for row in rows}
+    assert by_key[("1", "identity")]["ate_rmse_m"] == by_key[("1", "predictive_recovery")]["ate_rmse_m"]
+    assert float(by_key[("3", "predictive_recovery")]["ate_rmse_m"]) < float(by_key[("3", "identity")]["ate_rmse_m"])
+    assert int(by_key[("3", "predictive_recovery")]["successful_recovery_attempts"]) > 0
+    assert int(by_key[("3", "predictive_recovery")]["unrecovered_lost_events"]) == 0
