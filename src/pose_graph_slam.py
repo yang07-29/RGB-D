@@ -19,6 +19,8 @@ import open3d as o3d
 
 from .metrics import invert_pose, rotation_angle_degrees
 from .open3d_odometry import build_clouds_with_normals, run_point_to_plane
+from .pose_graph_quality import loop_edge_rejection_reasons, sequential_edge_failure_reason
+from .quality import evaluate_registration_quality
 from .run_odometry import evaluate, plot_trajectories, write_trajectory
 from .runtime import process_rss_bytes
 from .slam import propose_descriptor_loop_candidates, propose_loop_candidates, select_keyframe_indices
@@ -64,7 +66,33 @@ def global_then_local_registration(source, target, source_fpfh, target_fpfh, arg
     return global_result, refined
 
 
-def build_sequential_pose_graph(key_clouds, initial_poses, max_correspondence: float, iterations: int):
+def clone_pose_graph(graph):
+    clone = o3d.pipelines.registration.PoseGraph()
+    for node in graph.nodes:
+        clone.nodes.append(o3d.pipelines.registration.PoseGraphNode(np.asarray(node.pose).copy()))
+    for edge in graph.edges:
+        clone.edges.append(
+            o3d.pipelines.registration.PoseGraphEdge(
+                edge.source_node_id,
+                edge.target_node_id,
+                np.asarray(edge.transformation).copy(),
+                np.asarray(edge.information).copy(),
+                edge.uncertain,
+                edge.confidence,
+            )
+        )
+    return clone
+
+
+def build_sequential_pose_graph(
+    key_clouds,
+    initial_poses,
+    max_correspondence: float,
+    iterations: int,
+    *,
+    min_correspondence_ratio: float,
+    max_all_point_rmse_m: float,
+):
     graph = o3d.pipelines.registration.PoseGraph()
     graph.nodes.append(o3d.pipelines.registration.PoseGraphNode(np.eye(4)))
     poses = [np.eye(4)]
@@ -80,7 +108,21 @@ def build_sequential_pose_graph(key_clouds, initial_poses, max_correspondence: f
             o3d.pipelines.registration.TransformationEstimationPointToPlane(),
             o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=iterations),
         )
-        transformation = np.asarray(result.transformation)
+        icp_transformation = np.asarray(result.transformation)
+        quality = evaluate_registration_quality(
+            np.asarray(key_clouds[source_id].points),
+            np.asarray(key_clouds[target_id].points),
+            icp_transformation,
+            max_correspondence_m=max_correspondence,
+        )
+        failure_reason = sequential_edge_failure_reason(
+            correspondence_ratio=quality.correspondence_ratio,
+            all_point_rmse_m=quality.all_point_rmse_m,
+            min_correspondence_ratio=min_correspondence_ratio,
+            max_all_point_rmse_m=max_all_point_rmse_m,
+        )
+        transformation = predicted if failure_reason is not None else icp_transformation
+        edge_source = "odometry_prediction_fallback" if failure_reason is not None else "keyframe_icp"
         information = o3d.pipelines.registration.get_information_matrix_from_point_clouds(
             key_clouds[source_id], key_clouds[target_id], max_correspondence, transformation,
         )
@@ -96,6 +138,13 @@ def build_sequential_pose_graph(key_clouds, initial_poses, max_correspondence: f
             "target_keyframe_id": target_id,
             "fitness": float(result.fitness),
             "inlier_rmse_m": float(result.inlier_rmse),
+            "shared_correspondences": quality.correspondences,
+            "shared_correspondence_ratio": quality.correspondence_ratio,
+            "shared_inlier_rmse_m": quality.inlier_rmse_m,
+            "shared_all_point_rmse_m": quality.all_point_rmse_m,
+            "edge_source": edge_source,
+            "quality_accepted": failure_reason is None,
+            "failure_reason": failure_reason,
         })
     return graph, poses, rows
 
@@ -135,6 +184,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("artifacts/pose_graph_fr1_xyz"))
+    parser.add_argument("--max-frames", type=int, default=None)
     parser.add_argument("--stride", type=int, default=8)
     parser.add_argument("--voxel", type=float, default=0.05)
     parser.add_argument("--min-depth", type=float, default=0.2)
@@ -143,6 +193,8 @@ def main() -> None:
     parser.add_argument("--normal-max-nn", type=int, default=30)
     parser.add_argument("--odometry-correspondence", type=float, default=0.08)
     parser.add_argument("--odometry-iterations", type=int, default=30)
+    parser.add_argument("--min-sequential-correspondence-ratio", type=float, default=0.5)
+    parser.add_argument("--max-sequential-all-point-rmse", type=float, default=0.08)
     parser.add_argument("--keyframe-translation", type=float, default=0.05)
     parser.add_argument("--keyframe-rotation-deg", type=float, default=10.0)
     parser.add_argument("--keyframe-max-gap", type=int, default=40)
@@ -154,7 +206,7 @@ def main() -> None:
     parser.add_argument("--loop-candidate-distance", type=float, default=0.10)
     parser.add_argument("--loop-candidate-rotation-deg", type=float, default=25.0)
     parser.add_argument("--max-loop-candidates", type=int, default=30)
-    parser.add_argument("--hard-negative-candidates", type=int, default=2)
+    parser.add_argument("--hard-negative-candidates", type=int, default=10)
     parser.add_argument("--hard-negative-min-distance", type=float, default=0.40)
     parser.add_argument("--feature-radius", type=float, default=0.25)
     parser.add_argument("--ransac-correspondence", type=float, default=0.075)
@@ -165,19 +217,29 @@ def main() -> None:
     parser.add_argument("--min-global-fitness", type=float, default=0.15)
     parser.add_argument("--min-refined-fitness", type=float, default=0.45)
     parser.add_argument("--max-refined-rmse", type=float, default=0.04)
+    parser.add_argument("--min-loop-correspondence-ratio", type=float, default=0.45)
+    parser.add_argument("--max-loop-all-point-rmse", type=float, default=0.12)
     parser.add_argument("--max-consistency-translation", type=float, default=0.08)
     parser.add_argument("--max-consistency-rotation-deg", type=float, default=15.0)
     parser.add_argument("--edge-prune-threshold", type=float, default=0.25)
     parser.add_argument("--loop-closure-preference", type=float, default=0.1)
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
-    if args.voxel <= 0 or args.stride < 1 or args.max_loop_candidates < 1:
+    if args.voxel <= 0 or args.stride < 1 or args.max_loop_candidates < 1 or args.hard_negative_candidates < 1:
         parser.error("voxel, stride, and max-loop-candidates must be positive")
+    if not 0 <= args.min_sequential_correspondence_ratio <= 1 or not 0 <= args.min_loop_correspondence_ratio <= 1:
+        parser.error("sequential and loop correspondence ratios must be in [0, 1]")
+    if args.max_sequential_all_point_rmse <= 0 or args.max_loop_all_point_rmse <= 0:
+        parser.error("sequential and loop all-point RMSE gates must be positive")
 
     args.output.mkdir(parents=True, exist_ok=True)
     total_start = time.perf_counter()
     o3d.utility.random.seed(0)
     frames = load_tum_rgbd_frames(args.dataset)
+    if args.max_frames is not None:
+        frames = frames[:args.max_frames]
+    if len(frames) < 3:
+        parser.error("At least three associated frames are required")
     odometry_args = SimpleNamespace(
         stride=args.stride,
         voxel=args.voxel,
@@ -209,6 +271,8 @@ def main() -> None:
 
     pose_graph, initial_key_poses, odometry_edges = build_sequential_pose_graph(
         key_clouds, selected_odometry_poses, args.odometry_correspondence, args.odometry_iterations,
+        min_correspondence_ratio=args.min_sequential_correspondence_ratio,
+        max_all_point_rmse_m=args.max_sequential_all_point_rmse,
     )
     if args.candidate_mode == "descriptor":
         if args.descriptor_file is None:
@@ -260,17 +324,28 @@ def main() -> None:
         consistency_translation, consistency_rotation = relative_error(np.asarray(refined.transformation), predicted)
         truth_relative = invert_pose(key_ground_truth[target_id]) @ key_ground_truth[source_id]
         gt_translation_error, gt_rotation_error = relative_error(np.asarray(refined.transformation), truth_relative)
-        reasons = []
-        if float(global_result.fitness) < args.min_global_fitness:
-            reasons.append(f"global_fitness<{args.min_global_fitness}")
-        if float(refined.fitness) < args.min_refined_fitness:
-            reasons.append(f"refined_fitness<{args.min_refined_fitness}")
-        if float(refined.inlier_rmse) > args.max_refined_rmse:
-            reasons.append(f"refined_rmse>{args.max_refined_rmse}")
-        if consistency_translation > args.max_consistency_translation:
-            reasons.append(f"consistency_translation>{args.max_consistency_translation}")
-        if consistency_rotation > args.max_consistency_rotation_deg:
-            reasons.append(f"consistency_rotation>{args.max_consistency_rotation_deg}")
+        loop_quality = evaluate_registration_quality(
+            np.asarray(key_clouds[source_id].points),
+            np.asarray(key_clouds[target_id].points),
+            np.asarray(refined.transformation),
+            max_correspondence_m=args.loop_refine_correspondence,
+        )
+        reasons = loop_edge_rejection_reasons(
+            global_fitness=float(global_result.fitness),
+            refined_fitness=float(refined.fitness),
+            refined_inlier_rmse_m=float(refined.inlier_rmse),
+            shared_correspondence_ratio=loop_quality.correspondence_ratio,
+            shared_all_point_rmse_m=loop_quality.all_point_rmse_m,
+            consistency_translation_m=consistency_translation,
+            consistency_rotation_deg=consistency_rotation,
+            min_global_fitness=args.min_global_fitness,
+            min_refined_fitness=args.min_refined_fitness,
+            max_refined_inlier_rmse_m=args.max_refined_rmse,
+            min_shared_correspondence_ratio=args.min_loop_correspondence_ratio,
+            max_shared_all_point_rmse_m=args.max_loop_all_point_rmse,
+            max_consistency_translation_m=args.max_consistency_translation,
+            max_consistency_rotation_deg=args.max_consistency_rotation_deg,
+        )
         accepted = not reasons
         if accepted:
             information = o3d.pipelines.registration.get_information_matrix_from_point_clouds(
@@ -295,6 +370,10 @@ def main() -> None:
             "global_inlier_rmse_m": float(global_result.inlier_rmse),
             "refined_fitness": float(refined.fitness),
             "refined_inlier_rmse_m": float(refined.inlier_rmse),
+            "shared_correspondences": loop_quality.correspondences,
+            "shared_correspondence_ratio": loop_quality.correspondence_ratio,
+            "shared_inlier_rmse_m": loop_quality.inlier_rmse_m,
+            "shared_all_point_rmse_m": loop_quality.all_point_rmse_m,
             "odometry_consistency_translation_m": consistency_translation,
             "odometry_consistency_rotation_deg": consistency_rotation,
             "accepted": accepted,
@@ -339,17 +418,28 @@ def main() -> None:
         consistency_translation, consistency_rotation = relative_error(np.asarray(refined.transformation), predicted)
         truth_relative = invert_pose(key_ground_truth[target_id]) @ key_ground_truth[source_id]
         gt_translation_error, gt_rotation_error = relative_error(np.asarray(refined.transformation), truth_relative)
-        reasons = []
-        if float(global_result.fitness) < args.min_global_fitness:
-            reasons.append(f"global_fitness<{args.min_global_fitness}")
-        if float(refined.fitness) < args.min_refined_fitness:
-            reasons.append(f"refined_fitness<{args.min_refined_fitness}")
-        if float(refined.inlier_rmse) > args.max_refined_rmse:
-            reasons.append(f"refined_rmse>{args.max_refined_rmse}")
-        if consistency_translation > args.max_consistency_translation:
-            reasons.append(f"consistency_translation>{args.max_consistency_translation}")
-        if consistency_rotation > args.max_consistency_rotation_deg:
-            reasons.append(f"consistency_rotation>{args.max_consistency_rotation_deg}")
+        loop_quality = evaluate_registration_quality(
+            np.asarray(key_clouds[source_id].points),
+            np.asarray(key_clouds[target_id].points),
+            np.asarray(refined.transformation),
+            max_correspondence_m=args.loop_refine_correspondence,
+        )
+        reasons = loop_edge_rejection_reasons(
+            global_fitness=float(global_result.fitness),
+            refined_fitness=float(refined.fitness),
+            refined_inlier_rmse_m=float(refined.inlier_rmse),
+            shared_correspondence_ratio=loop_quality.correspondence_ratio,
+            shared_all_point_rmse_m=loop_quality.all_point_rmse_m,
+            consistency_translation_m=consistency_translation,
+            consistency_rotation_deg=consistency_rotation,
+            min_global_fitness=args.min_global_fitness,
+            min_refined_fitness=args.min_refined_fitness,
+            max_refined_inlier_rmse_m=args.max_refined_rmse,
+            min_shared_correspondence_ratio=args.min_loop_correspondence_ratio,
+            max_shared_all_point_rmse_m=args.max_loop_all_point_rmse,
+            max_consistency_translation_m=args.max_consistency_translation,
+            max_consistency_rotation_deg=args.max_consistency_rotation_deg,
+        )
         accepted_under_gates = not reasons
         row = {
             "source_keyframe_id": source_id,
@@ -361,6 +451,10 @@ def main() -> None:
             "global_inlier_rmse_m": float(global_result.inlier_rmse),
             "refined_fitness": float(refined.fitness),
             "refined_inlier_rmse_m": float(refined.inlier_rmse),
+            "shared_correspondences": loop_quality.correspondences,
+            "shared_correspondence_ratio": loop_quality.correspondence_ratio,
+            "shared_inlier_rmse_m": loop_quality.inlier_rmse_m,
+            "shared_all_point_rmse_m": loop_quality.all_point_rmse_m,
             "odometry_consistency_translation_m": consistency_translation,
             "odometry_consistency_rotation_deg": consistency_rotation,
             "accepted_under_same_gates": accepted_under_gates,
@@ -382,6 +476,26 @@ def main() -> None:
         preference_loop_closure=args.loop_closure_preference,
         reference_node=0,
     )
+    forced_bad_graph = None
+    forced_bad_record = next(
+        (record for record in hard_case_records if record["posthoc_gt_label"] == "incorrect"),
+        None,
+    )
+    if forced_bad_record is not None:
+        forced_bad_graph = clone_pose_graph(pose_graph)
+        source_id = int(forced_bad_record["source_keyframe_id"])
+        target_id = int(forced_bad_record["target_keyframe_id"])
+        transformation = np.asarray(forced_bad_record["refined_transformation"])
+        information = o3d.pipelines.registration.get_information_matrix_from_point_clouds(
+            key_clouds[source_id], key_clouds[target_id], args.loop_refine_correspondence, transformation,
+        )
+        # Evaluation-only adversarial diagnostic: deliberately bypass every
+        # production gate and force one post-hoc wrong edge into the graph.
+        forced_bad_graph.edges.append(
+            o3d.pipelines.registration.PoseGraphEdge(
+                source_id, target_id, transformation, information, uncertain=False,
+            )
+        )
     o3d.pipelines.registration.global_optimization(
         pose_graph,
         o3d.pipelines.registration.GlobalOptimizationLevenbergMarquardt(),
@@ -390,6 +504,17 @@ def main() -> None:
     )
     optimized_key_poses = [np.asarray(node.pose) for node in pose_graph.nodes]
     optimized_metrics, optimized_aligned = evaluate("keyframe_pose_graph_after_optimization", optimized_key_poses, key_ground_truth)
+    forced_bad_metrics = None
+    if forced_bad_graph is not None:
+        o3d.pipelines.registration.global_optimization(
+            forced_bad_graph,
+            o3d.pipelines.registration.GlobalOptimizationLevenbergMarquardt(),
+            criteria,
+            option,
+        )
+        forced_bad_poses = [np.asarray(node.pose) for node in forced_bad_graph.nodes]
+        forced_bad_metrics, _ = evaluate("pose_graph_with_one_forced_bad_edge", forced_bad_poses, key_ground_truth)
+        write_trajectory(args.output / "trajectory_keyframes_forced_bad_edge.txt", key_frames, forced_bad_poses)
 
     write_trajectory(args.output / "trajectory_keyframes_before.txt", key_frames, initial_key_poses)
     write_trajectory(args.output / "trajectory_keyframes_after.txt", key_frames, optimized_key_poses)
@@ -420,6 +545,10 @@ def main() -> None:
             writer = csv.DictWriter(handle, fieldnames=list(hard_negative_rows[0]))
             writer.writeheader()
             writer.writerows(hard_negative_rows)
+    with (args.output / "sequential_edges.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(odometry_edges[0]))
+        writer.writeheader()
+        writer.writerows(odometry_edges)
     with (args.output / "keyframes.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=["keyframe_id", "frame_index", "timestamp"])
         writer.writeheader()
@@ -443,20 +572,32 @@ def main() -> None:
     active_loop_edges = sum(1 for edge in pose_graph.edges if edge.uncertain and edge.confidence > args.edge_prune_threshold)
     accepted_correct = sum(1 for row in loop_rows if row["accepted"] and row["posthoc_gt_label"] == "correct")
     accepted_incorrect = sum(1 for row in loop_rows if row["accepted"] and row["posthoc_gt_label"] == "incorrect")
+    rejected_correct = sum(1 for row in loop_rows if not row["accepted"] and row["posthoc_gt_label"] == "correct")
+    rejected_incorrect_count = sum(1 for row in loop_rows if not row["accepted"] and row["posthoc_gt_label"] == "incorrect")
     summary = {
         "experiment": f"TUM fr1/xyz keyframes, {args.candidate_mode} loop candidates, FPFH/RANSAC, and Open3D pose graph",
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "dataset": str(args.dataset),
+        "association_protocol": "one_to_one_minimum_offset_greedy_v2",
+        "edge_quality_protocol": "shared_nearest_neighbor_v2 plus backend fitness/inlier RMSE and odometry consistency",
         "parameters": {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()},
         "frames": len(frames),
         "keyframes": len(keyframe_indices),
         "odometry_edges": len(odometry_edges),
+        "sequential_edge_quality": {
+            "accepted_keyframe_icp": sum(bool(row["quality_accepted"]) for row in odometry_edges),
+            "odometry_prediction_fallback": sum(not bool(row["quality_accepted"]) for row in odometry_edges),
+        },
         "loop_candidates": len(loop_rows),
         "accepted_loop_edges_before_optimization": accepted_loop_edges,
         "active_loop_edges_after_optimization": active_loop_edges,
         "posthoc_loop_labels": {
             "accepted_correct": accepted_correct,
             "accepted_incorrect": accepted_incorrect,
+            "rejected_correct": rejected_correct,
+            "rejected_incorrect": rejected_incorrect_count,
+            "false_accepts": accepted_incorrect,
+            "false_rejects": rejected_correct,
             "note": "Ground truth labels are evaluation-only and never enter candidate generation or acceptance.",
         },
         "hard_negative_stress": {
@@ -468,6 +609,16 @@ def main() -> None:
         "full_frame_odometry": full_odometry_metrics,
         "keyframe_before": initial_metrics,
         "keyframe_after": optimized_metrics,
+        "forced_bad_edge_stress": {
+            "performed": forced_bad_record is not None,
+            "source_keyframe_id": forced_bad_record["source_keyframe_id"] if forced_bad_record is not None else None,
+            "target_keyframe_id": forced_bad_record["target_keyframe_id"] if forced_bad_record is not None else None,
+            "posthoc_gt_label": forced_bad_record["posthoc_gt_label"] if forced_bad_record is not None else None,
+            "gt_translation_error_m": forced_bad_record["gt_translation_error_m"] if forced_bad_record is not None else None,
+            "gt_rotation_error_deg": forced_bad_record["gt_rotation_error_deg"] if forced_bad_record is not None else None,
+            "metrics_after_forced_insertion": forced_bad_metrics,
+            "note": "Evaluation-only adversarial test: one post-hoc incorrect hard negative is inserted as a certain edge, bypassing all production gates.",
+        },
         "performance": {
             "total_runtime_s": time.perf_counter() - total_start,
             "peak_rss_bytes": max(rss_samples) if rss_samples else process_rss_bytes(),
@@ -481,9 +632,10 @@ def main() -> None:
             "gpu": "not used",
         },
         "artifacts": [
-            "summary.json", "keyframes.csv", "loop_candidates.csv", "hard_negative_candidates.csv", "pose_graph_optimized.json",
+            "summary.json", "keyframes.csv", "sequential_edges.csv", "loop_candidates.csv", "hard_negative_candidates.csv", "pose_graph_optimized.json",
             "trajectory_keyframes_before.txt", "trajectory_keyframes_after.txt",
             "trajectory_keyframes_before_after.png", "loop_correct_and_rejected_cases.png", "optimized_keyframe_map.ply",
+            "trajectory_keyframes_forced_bad_edge.txt",
         ],
         "notes": [
             "Ground truth is used only for final ATE/RPE and post-hoc loop labels.",
@@ -492,7 +644,8 @@ def main() -> None:
                 if args.candidate_mode == "descriptor"
                 else "Candidate discovery uses estimated pose proximity; FPFH/RANSAC supplies global initialization."
             ),
-            "Loop acceptance uses registration fitness/RMSE and odometry-cycle consistency, not ground truth.",
+            "Sequential keyframe ICP uses shared final-transform quality; failed ICP edges fall back to the already estimated odometry transform instead of entering the graph as confident ICP.",
+            "Loop acceptance uses backend metrics, shared final-transform quality, and odometry-cycle consistency, not ground truth.",
             "Reported before/after pose-graph metrics are on the identical selected keyframe timestamps.",
         ],
     }

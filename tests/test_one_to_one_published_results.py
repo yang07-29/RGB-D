@@ -84,3 +84,42 @@ def test_tracking_stress_report_preserves_baseline_and_records_tradeoff():
     assert float(by_key[("3", "predictive_recovery")]["ate_rmse_m"]) < float(by_key[("3", "identity")]["ate_rmse_m"])
     assert int(by_key[("3", "predictive_recovery")]["successful_recovery_attempts"]) > 0
     assert int(by_key[("3", "predictive_recovery")]["unrecovered_lost_events"]) == 0
+
+
+def test_pose_graph_edge_quality_report_records_clean_and_adversarial_runs():
+    result = ROOT / "results" / "pose_graph_one_to_one_edge_quality_v2"
+    report = json.loads((result / "summary.json").read_text(encoding="utf-8"))
+
+    assert report["association_protocol"] == "one_to_one_minimum_offset_greedy_v2"
+    assert report["frames"] == 790
+    assert report["keyframes"] == 125
+    sequential = report["sequential_edge_quality"]
+    assert sequential["accepted_keyframe_icp"] + sequential["odometry_prediction_fallback"] == report["odometry_edges"]
+
+    labels = report["posthoc_loop_labels"]
+    assert labels["false_accepts"] == labels["accepted_incorrect"]
+    assert labels["false_rejects"] == labels["rejected_correct"]
+    assert sum(labels[key] for key in (
+        "accepted_correct", "accepted_incorrect", "rejected_correct", "rejected_incorrect"
+    )) == report["loop_candidates"]
+
+    hard = report["hard_negative_stress"]
+    assert hard["candidates"] == hard["rejected_by_same_gates"] == 10
+    forced = report["forced_bad_edge_stress"]
+    assert forced["performed"] is True
+    assert forced["posthoc_gt_label"] == "incorrect"
+    clean_ate = report["keyframe_after"]["ate"]["rmse_m"]
+    bad_ate = forced["metrics_after_forced_insertion"]["ate"]["rmse_m"]
+    assert bad_ate > clean_ate * 10
+
+    for name in (
+        "sequential_edges.csv",
+        "loop_candidates.csv",
+        "hard_negative_candidates.csv",
+        "trajectory_keyframes_before.txt",
+        "trajectory_keyframes_after.txt",
+        "trajectory_keyframes_forced_bad_edge.txt",
+        "trajectory_keyframes_before_after.png",
+        "loop_correct_and_rejected_cases.png",
+    ):
+        assert (result / name).is_file()

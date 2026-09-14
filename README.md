@@ -63,6 +63,20 @@ C++ 的逐帧 CSV、未对齐轨迹和 summary 见 [`results/cpp_one_to_one_qual
 
 恢复模式在正常输入上保持相同轨迹但增加延迟；step=2 略差；step=3 的 ATE 下降约 18%，但短间隔 RPE 从 `0.024050 m / 1.223°` 变差到 `0.028843 m / 1.471°`。因此它作为实验选项保留，没有替换默认基线。六次原始 summary 和完整表格见 [`results/tracking_stress_one_to_one_v2/`](results/tracking_stress_one_to_one_v2/)。
 
+### 位姿图与错误回环压力测试
+
+在同一组 790 帧上选出 125 个关键帧。顺序关键帧 ICP 和回环边统一检查最终变换下的对应比例、残差和里程计一致性；不通过的顺序边改用已经生成的前端里程计变换，避免把低质量 ICP 当成确定边。
+
+| 关键帧轨迹 | ATE（m） | RPE Δ1（m / °） | RPE Δ30（m / °） |
+| --- | ---: | ---: | ---: |
+| 优化前 | 0.044338 | 0.014733 / 1.246 | 0.066234 / 2.888 |
+| 正常位姿图优化后 | **0.029692** | **0.014641 / 1.236** | **0.043144 / 2.568** |
+| 强制插入一条错误边 | 0.464398 | 0.038497 / 1.710 | 0.546136 / 19.348 |
+
+正常优化使关键帧 ATE 下降约 33%。作为对照，我从困难负例中选出一条事后真值误差为 `1.360 m / 133.7°` 的错误边，绕过生产门限强制加入图中，ATE 随即扩大到 46.4 cm。这个压力实验只用于说明错误回环的破坏性；真值没有参与正常候选生成或接收。
+
+30 个正常候选中有 22 个正确接收、1 个错误接收和 7 个正确候选被拒绝；另选的 10 个困难负例全部被拒绝。说明当前门限有效但偏保守，而且仍未彻底消除误接收。逐边 CSV、优化前后轨迹、错误边轨迹和完整参数见 [`results/pose_graph_one_to_one_edge_quality_v2/`](results/pose_graph_one_to_one_edge_quality_v2/)。
+
 ## 效果图
 
 真实深度图反投影后的点云：
@@ -71,17 +85,17 @@ C++ 的逐帧 CSV、未对齐轨迹和 summary 见 [`results/cpp_one_to_one_qual
 
 关键帧轨迹在位姿图优化前后的对照：
 
-![位姿图轨迹](docs/images/pose_graph_trajectory.png)
+![位姿图轨迹](results/pose_graph_one_to_one_edge_quality_v2/trajectory_keyframes_before_after.png)
 
 回环候选的正确案例与被几何门限拒绝的错误案例：
 
-![回环成功与失败](docs/images/loop_correct_and_rejected_cases.png)
+![回环成功与失败](results/pose_graph_one_to_one_edge_quality_v2/loop_correct_and_rejected_cases.png)
 
 ROS2 rosbag 回放时在 RViz 中显示的 `/path`、`/cloud` 和 TF：
 
 ![ROS2 rosbag RViz](docs/images/ros2_rviz_bag_demo.png)
 
-这些位姿图和 ROS2 图片来自仓库早期的 796 帧“允许最近深度复用”协议，适合展示模块运行形态，不与上面的 790 帧主结果混合比较。对应模块会在一对一协议下重新评测后再进入主表。
+位姿图图片来自上面的 790 帧一对一实验。ROS2 图片仍来自仓库早期的 796 帧“允许最近深度复用”协议，只用于展示节点和 RViz 的运行形态，不与主结果混合比较。
 
 ## 数据流和坐标系
 
@@ -152,6 +166,9 @@ powershell -ExecutionPolicy Bypass -File scripts\run_evo_crosscheck.ps1
 
 # 跟踪丢失与跳帧压力实验
 powershell -ExecutionPolicy Bypass -File scripts\run_tracking_stress.ps1
+
+# 位姿图、回环质量门与错误边压力实验
+powershell -ExecutionPolicy Bypass -File scripts\run_pose_graph.ps1
 ```
 
 真值文件不是里程计的必需输入。对没有 `groundtruth.txt` 的 RGB-D 目录，或者希望显式关闭评测时：
@@ -181,12 +198,11 @@ bash scripts/build_and_run_cpp.sh \
   artifacts/linux_cpp_full
 ```
 
-### 4. 位姿图、学习描述子与 ROS2
+### 4. 学习描述子与 ROS2
 
 这些入口保留用于继续实验，结果版本说明分别写在各自结果目录中：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\run_pose_graph.ps1
 powershell -ExecutionPolicy Bypass -File scripts\run_loop_learning.ps1
 powershell -ExecutionPolicy Bypass -File scripts\run_learned_pose_graph.ps1
 ```
