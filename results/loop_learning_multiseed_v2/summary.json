@@ -1,0 +1,222 @@
+{
+  "experiment": "multi-seed loop descriptor ablation with downstream pose graphs",
+  "created_utc": "2026-09-14T14:25:37.995189+00:00",
+  "association_protocol": "one_to_one_minimum_offset_greedy_v2",
+  "seeds": [
+    42,
+    20260724,
+    20260914
+  ],
+  "retrieval": {
+    "hsv_histogram": {
+      "runs": 3,
+      "test_recall_at_1": {
+        "mean": 0.9428571428571427,
+        "std": 1.1102230246251565e-16
+      },
+      "test_recall_at_5": {
+        "mean": 0.9571428571428572,
+        "std": 0.0
+      },
+      "test_precision": {
+        "mean": 0.6978999345588672,
+        "std": 0.0
+      },
+      "test_recall": {
+        "mean": 0.5644517153442717,
+        "std": 0.0
+      },
+      "test_f1": {
+        "mean": 0.6241221536497127,
+        "std": 0.0
+      }
+    },
+    "mobilenetv3_imagenet_frozen": {
+      "runs": 3,
+      "test_recall_at_1": {
+        "mean": 0.9857142857142858,
+        "std": 0.0
+      },
+      "test_recall_at_5": {
+        "mean": 0.9857142857142858,
+        "std": 0.0
+      },
+      "test_precision": {
+        "mean": 0.7288296385060914,
+        "std": 1.1102230246251565e-16
+      },
+      "test_recall": {
+        "mean": 0.702352884569119,
+        "std": 0.0
+      },
+      "test_f1": {
+        "mean": 0.7153463526990272,
+        "std": 1.1102230246251565e-16
+      }
+    },
+    "mobilenetv3_no_se": {
+      "runs": 3,
+      "test_recall_at_1": {
+        "mean": 0.9738095238095239,
+        "std": 0.012140522651411386
+      },
+      "test_recall_at_5": {
+        "mean": 0.9857142857142858,
+        "std": 0.0058321184351980675
+      },
+      "test_precision": {
+        "mean": 0.5171865340155403,
+        "std": 0.030276675380789337
+      },
+      "test_recall": {
+        "mean": 0.8950263837431235,
+        "std": 0.029817618668508624
+      },
+      "test_f1": {
+        "mean": 0.6543332654993124,
+        "std": 0.016753840044986135
+      }
+    },
+    "mobilenetv3_se": {
+      "runs": 3,
+      "test_recall_at_1": {
+        "mean": 0.9523809523809522,
+        "std": 0.008908708063747496
+      },
+      "test_recall_at_5": {
+        "mean": 0.9738095238095239,
+        "std": 0.014677176197545177
+      },
+      "test_precision": {
+        "mean": 0.5488487618114722,
+        "std": 0.03230732140010016
+      },
+      "test_recall": {
+        "mean": 0.8362443663891964,
+        "std": 0.054619287753424374
+      },
+      "test_f1": {
+        "mean": 0.660331404817037,
+        "std": 0.008538932441402821
+      }
+    }
+  },
+  "pose_graph": {
+    "hsv_histogram": {
+      "runs": 1,
+      "ate_before_m": {
+        "mean": 0.044337794243966604,
+        "std": 0.0
+      },
+      "ate_after_m": {
+        "mean": 0.026370099287834826,
+        "std": 0.0
+      },
+      "false_accepts": {
+        "mean": 1.0,
+        "std": 0.0
+      },
+      "false_rejects": {
+        "mean": 9.0,
+        "std": 0.0
+      }
+    },
+    "mobilenetv3_imagenet_frozen": {
+      "runs": 1,
+      "ate_before_m": {
+        "mean": 0.044337794243984485,
+        "std": 0.0
+      },
+      "ate_after_m": {
+        "mean": 0.02620015917517714,
+        "std": 0.0
+      },
+      "false_accepts": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "false_rejects": {
+        "mean": 5.0,
+        "std": 0.0
+      }
+    },
+    "mobilenetv3_no_se": {
+      "runs": 3,
+      "ate_before_m": {
+        "mean": 0.044337794243984485,
+        "std": 0.0
+      },
+      "ate_after_m": {
+        "mean": 0.02896536185810414,
+        "std": 0.0019733624452533912
+      },
+      "false_accepts": {
+        "mean": 0.6666666666666666,
+        "std": 0.4714045207910317
+      },
+      "false_rejects": {
+        "mean": 11.0,
+        "std": 0.816496580927726
+      }
+    },
+    "mobilenetv3_se": {
+      "runs": 3,
+      "ate_before_m": {
+        "mean": 0.044337794243984485,
+        "std": 0.0
+      },
+      "ate_after_m": {
+        "mean": 0.029807346494598583,
+        "std": 0.0005187405353781004
+      },
+      "false_accepts": {
+        "mean": 0.3333333333333333,
+        "std": 0.4714045207910317
+      },
+      "false_rejects": {
+        "mean": 12.333333333333334,
+        "std": 1.247219128924647
+      }
+    }
+  },
+  "environment": {
+    "python": "3.13.9 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 19:09:58) [MSC v.1929 64 bit (AMD64)]",
+    "torch": "2.11.0+cu128",
+    "torchvision": "0.26.0+cu128",
+    "cuda_available": true,
+    "device": "cuda",
+    "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "logical_cpu_count": 24
+  },
+  "protocol": {
+    "split_policy": "sequence-isolated: train=fr1/desk, validation=fr1/desk2, test=fr1/xyz",
+    "ground_truth_scope": "training labels, validation threshold selection, and final evaluation only",
+    "candidate_policy": "each evaluation query retrieves only older frames separated by min_frame_separation",
+    "threshold_policy": "maximize pair F1 on validation; freeze before test",
+    "protocol": {
+      "min_frame_separation": 30,
+      "positive_translation_m": 0.2,
+      "positive_rotation_deg": 25.0,
+      "negative_translation_m": 0.5,
+      "negative_rotation_deg": 60.0,
+      "evaluation_step": 5
+    },
+    "frame_counts": {
+      "train": 573,
+      "validation": 612,
+      "test": 790
+    },
+    "training_triplets": 1216,
+    "training_anchors": 304,
+    "negative_sampling": "geometric_hard",
+    "hard_negative_fraction": 0.25
+  },
+  "notes": [
+    "HSV and frozen ImageNet features are deterministic baselines; they are evaluated for all seeds but their downstream pose graph is run once.",
+    "The frozen ImageNet baseline has no triplet training or random projection.",
+    "No-SE and SE use the same data, geometric-hard-negative policy, hyperparameters, and three seeds.",
+    "Some task-trained runs reached near-zero triplet training loss while validation retrieval remained non-monotonic, so the current mining policy is not treated as solved.",
+    "Ground truth is used for supervision, validation threshold selection, and post-hoc metrics only."
+  ]
+}

@@ -62,11 +62,17 @@ def make_training_triplets(
     *,
     triplets_per_anchor: int = 4,
     seed: int = 0,
+    negative_sampling: str = "random",
+    hard_negative_fraction: float = 0.25,
 ) -> list[tuple[int, int, int]]:
     """Build deterministic (anchor, positive, negative) supervision triples."""
     protocol.validate()
     if triplets_per_anchor < 1:
         raise ValueError("triplets_per_anchor must be positive")
+    if negative_sampling not in {"random", "geometric_hard"}:
+        raise ValueError("negative_sampling must be 'random' or 'geometric_hard'")
+    if not 0 < hard_negative_fraction <= 1:
+        raise ValueError("hard_negative_fraction must be in (0, 1]")
     rng = np.random.default_rng(seed)
     triplets: list[tuple[int, int, int]] = []
     for anchor in range(len(poses)):
@@ -79,12 +85,44 @@ def make_training_triplets(
         negatives = [candidate for candidate in eligible if is_negative_pair(poses[anchor], poses[candidate], protocol)]
         if not positives or not negatives:
             continue
+        if negative_sampling == "geometric_hard":
+            negatives = sorted(
+                negatives,
+                key=lambda candidate: (
+                    pose_separation(poses[anchor], poses[candidate])[0] / protocol.negative_translation_m
+                    + pose_separation(poses[anchor], poses[candidate])[1] / protocol.negative_rotation_deg
+                ),
+            )[:max(1, int(np.ceil(len(negatives) * hard_negative_fraction)))]
         for _ in range(triplets_per_anchor):
             positive = int(positives[int(rng.integers(len(positives)))])
             negative = int(negatives[int(rng.integers(len(negatives)))])
             triplets.append((anchor, positive, negative))
     rng.shuffle(triplets)
     return triplets
+
+
+def build_frozen_mobilenet_descriptor(*, pretrained: bool = True):
+    """Return pooled MobileNetV3-Small features without task-specific training."""
+    import torch
+    from torch import nn
+    from torchvision.models import MobileNet_V3_Small_Weights, mobilenet_v3_small
+
+    weights = MobileNet_V3_Small_Weights.IMAGENET1K_V1 if pretrained else None
+    backbone = mobilenet_v3_small(weights=weights)
+
+    class FrozenMobileNetDescriptor(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.features = backbone.features
+            self.pool = nn.AdaptiveAvgPool2d(1)
+            for parameter in self.parameters():
+                parameter.requires_grad_(False)
+
+        def forward(self, images):
+            features = self.pool(self.features(images)).flatten(1)
+            return torch.nn.functional.normalize(features, p=2, dim=1)
+
+    return FrozenMobileNetDescriptor()
 
 
 def evaluation_pairs(

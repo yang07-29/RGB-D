@@ -21,6 +21,7 @@ from PIL import Image
 
 from .loop_learning import (
     LoopProtocol,
+    build_frozen_mobilenet_descriptor,
     build_mobilenet_descriptor,
     evaluate_descriptors,
     hsv_histogram_descriptor,
@@ -245,6 +246,7 @@ def train_variant(
         )
         row = {
             "variant": name,
+            "seed": seed,
             "epoch": epoch,
             "train_loss": float(np.mean(losses)),
             "epoch_runtime_s": time.perf_counter() - epoch_start,
@@ -354,6 +356,8 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--descriptor-dim", type=int, default=128)
     parser.add_argument("--triplets-per-anchor", type=int, default=4)
+    parser.add_argument("--negative-sampling", choices=("random", "geometric_hard"), default="geometric_hard")
+    parser.add_argument("--hard-negative-fraction", type=float, default=0.25)
     parser.add_argument("--margin", type=float, default=0.3)
     parser.add_argument("--seed", type=int, default=20260724)
     parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
@@ -362,6 +366,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.epochs < 1 or args.batch_size < 1 or args.descriptor_dim < 2:
         parser.error("epochs, batch-size, and descriptor-dim must be positive")
+    if not 0 < args.hard_negative_fraction <= 1:
+        parser.error("hard-negative-fraction must be in (0, 1]")
 
     import torch
 
@@ -383,6 +389,7 @@ def main() -> None:
     poses = {name: [frame.ground_truth for frame in sequence] for name, sequence in frames.items()}
     triplets = make_training_triplets(
         poses["train"], protocol, triplets_per_anchor=args.triplets_per_anchor, seed=args.seed,
+        negative_sampling=args.negative_sampling, hard_negative_fraction=args.hard_negative_fraction,
     )
     if not triplets:
         raise RuntimeError("No valid training triplets were produced")
@@ -395,6 +402,8 @@ def main() -> None:
         "frame_counts": {name: len(sequence) for name, sequence in frames.items()},
         "training_triplets": len(triplets),
         "training_anchors": len({anchor for anchor, _, _ in triplets}),
+        "negative_sampling": args.negative_sampling,
+        "hard_negative_fraction": args.hard_negative_fraction,
     }
     (args.output / "protocol.json").write_text(
         json.dumps(protocol_record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
@@ -416,6 +425,7 @@ def main() -> None:
                 hsv_test_latencies.append((time.perf_counter() - start) * 1000.0)
         hsv_descriptors[split] = np.asarray(descriptors)
     hsv_scores, hsv_labels = validation_scores(hsv_descriptors["validation"], poses["validation"], protocol)
+    np.save(args.output / "hsv_histogram_test_descriptors.npy", hsv_descriptors["test"])
     hsv_threshold = select_f1_threshold(hsv_scores, hsv_labels)
     hsv_validation, _ = evaluate_split(
         hsv_descriptors["validation"], frames["validation"], protocol, float(hsv_threshold["threshold"]),
@@ -427,6 +437,7 @@ def main() -> None:
     result_rows.append(
         {
             "method": "hsv_histogram",
+            "seed": args.seed,
             "descriptor_dim": int(hsv_descriptors["test"].shape[1]),
             "with_se": "N/A",
             "model_parameters": "N/A",
@@ -450,6 +461,55 @@ def main() -> None:
             "peak_gpu_allocated_bytes": "N/A",
         }
     )
+
+    print("Evaluating frozen ImageNet MobileNetV3 features...", flush=True)
+    _, eval_transform = make_transforms()
+    frozen_model = build_frozen_mobilenet_descriptor(pretrained=True).to(device)
+    frozen_descriptors = {}
+    for split in ("validation", "test"):
+        frozen_descriptors[split], _ = extract_model_descriptors(
+            frozen_model, frames[split], eval_transform, device, args.batch_size,
+        )
+        np.save(args.output / f"mobilenetv3_imagenet_frozen_{split}_descriptors.npy", frozen_descriptors[split])
+    frozen_scores, frozen_labels = validation_scores(
+        frozen_descriptors["validation"], poses["validation"], protocol,
+    )
+    frozen_threshold = select_f1_threshold(frozen_scores, frozen_labels)
+    frozen_validation, _ = evaluate_split(
+        frozen_descriptors["validation"], frames["validation"], protocol, float(frozen_threshold["threshold"]),
+    )
+    frozen_test, frozen_retrieval_rows = evaluate_split(
+        frozen_descriptors["test"], frames["test"], protocol, float(frozen_threshold["threshold"]),
+    )
+    retrieval_rows_by_method["mobilenetv3_imagenet_frozen"] = frozen_retrieval_rows
+    frozen_benchmark = benchmark_model(
+        frozen_model, eval_transform, frames["test"], device, args.benchmark_samples,
+    )
+    result_rows.append({
+        "method": "mobilenetv3_imagenet_frozen",
+        "seed": args.seed,
+        "descriptor_dim": int(frozen_descriptors["test"].shape[1]),
+        "with_se": True,
+        "model_parameters": int(sum(parameter.numel() for parameter in frozen_model.parameters())),
+        "checkpoint_size_bytes": "N/A",
+        "checkpoint_sha256": "N/A",
+        "validation_threshold": frozen_threshold["threshold"],
+        "validation_f1": frozen_validation["f1"],
+        "validation_recall_at_1": frozen_validation["recall_at_1"],
+        "validation_recall_at_5": frozen_validation["recall_at_5"],
+        "test_precision": frozen_test["precision"],
+        "test_recall": frozen_test["recall"],
+        "test_f1": frozen_test["f1"],
+        "test_recall_at_1": frozen_test["recall_at_1"],
+        "test_recall_at_5": frozen_test["recall_at_5"],
+        "test_evaluable_queries": frozen_test["evaluable_queries"],
+        "inference_scope": frozen_benchmark["scope"],
+        "inference_mean_ms": frozen_benchmark["mean_latency_ms"],
+        "inference_median_ms": frozen_benchmark["median_latency_ms"],
+        "inference_p95_ms": frozen_benchmark["p95_latency_ms"],
+        "fps_from_mean": frozen_benchmark["fps_from_mean"],
+        "peak_gpu_allocated_bytes": frozen_benchmark.get("peak_gpu_allocated_bytes", "N/A"),
+    })
 
     for name, with_se in (("mobilenetv3_no_se", False), ("mobilenetv3_se", True)):
         print(f"Training {name}...", flush=True)
@@ -493,6 +553,7 @@ def main() -> None:
         result_rows.append(
             {
                 "method": name,
+                "seed": args.seed,
                 "descriptor_dim": args.descriptor_dim,
                 "with_se": with_se,
                 "model_parameters": metadata["parameters"],
@@ -537,6 +598,8 @@ def main() -> None:
             "descriptor_dim": args.descriptor_dim,
             "seed": args.seed,
             "pretrained_imagenet": not args.no_pretrained,
+            "negative_sampling": args.negative_sampling,
+            "hard_negative_fraction": args.hard_negative_fraction,
         },
         "results": result_rows,
         "performance": {
@@ -558,6 +621,8 @@ def main() -> None:
             "The decision threshold is chosen independently per method on validation and frozen for test.",
             "Ground truth supplies supervision/evaluation labels only; descriptor inference receives RGB images only.",
             "Recall@K includes only queries that have at least one GT-positive historical candidate.",
+            "The frozen ImageNet baseline has no learned projection and receives no triplet training.",
+            "No-SE and SE task-trained variants are initialized in separate deterministic builds under the same seed; they do not share a post-hoc checkpoint.",
             "GPU latency is synchronized batch-1 model forward and excludes image read/preprocessing, as stated in each row.",
         ],
     }

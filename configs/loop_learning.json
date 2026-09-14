@@ -23,6 +23,8 @@
     "batch_size": 32,
     "learning_rate": 0.0003,
     "triplets_per_anchor": 4,
-    "seed": 20260724
+    "seeds": [42, 20260724, 20260914],
+    "negative_sampling": "geometric_hard",
+    "hard_negative_fraction": 0.25
   }
 }

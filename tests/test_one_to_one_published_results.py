@@ -152,3 +152,32 @@ def test_streaming_performance_report_has_repeats_and_soak_evidence():
     assert len(report["soak_cycle_rss"]) == 3
     assert (result / "latency_curve.png").is_file()
     assert (result / "rss_curve.png").is_file()
+
+
+def test_learning_ablation_has_three_seeds_and_downstream_pose_graphs():
+    result = ROOT / "results" / "loop_learning_multiseed_v2"
+    retrieval = _rows(result / "retrieval_runs.csv")
+    pose_graph = _rows(result / "pose_graph_runs.csv")
+    assert len(retrieval) == 12
+    assert len(pose_graph) == 8
+    assert {row["seed"] for row in retrieval} == {"42", "20260724", "20260914"}
+    assert {row["method"] for row in retrieval} == {
+        "hsv_histogram",
+        "mobilenetv3_imagenet_frozen",
+        "mobilenetv3_no_se",
+        "mobilenetv3_se",
+    }
+    trained = [row for row in retrieval if row["method"] in {"mobilenetv3_no_se", "mobilenetv3_se"}]
+    assert len({row["checkpoint_sha256"] for row in trained}) == 6
+
+    report = json.loads((result / "summary.json").read_text(encoding="utf-8"))
+    assert report["protocol"]["frame_counts"] == {"train": 573, "validation": 612, "test": 790}
+    assert report["protocol"]["negative_sampling"] == "geometric_hard"
+    frozen = report["retrieval"]["mobilenetv3_imagenet_frozen"]
+    no_se = report["retrieval"]["mobilenetv3_no_se"]
+    se = report["retrieval"]["mobilenetv3_se"]
+    assert frozen["test_recall_at_1"]["mean"] > no_se["test_recall_at_1"]["mean"] > se["test_recall_at_1"]["mean"]
+    frozen_ate = report["pose_graph"]["mobilenetv3_imagenet_frozen"]["ate_after_m"]["mean"]
+    assert frozen_ate < report["pose_graph"]["mobilenetv3_no_se"]["ate_after_m"]["mean"]
+    assert frozen_ate < report["pose_graph"]["mobilenetv3_se"]["ate_after_m"]["mean"]
+    assert (result / "retrieval_and_ate_ablation.png").is_file()

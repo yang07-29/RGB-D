@@ -88,6 +88,19 @@ C++ 的逐帧 CSV、未对齐轨迹和 summary 见 [`results/cpp_one_to_one_qual
 
 30 个正常候选中有 22 个正确接收、1 个错误接收和 7 个正确候选被拒绝；另选的 10 个困难负例全部被拒绝。说明当前门限有效但偏保守，而且仍未彻底消除误接收。逐边 CSV、优化前后轨迹、错误边轨迹和完整参数见 [`results/pose_graph_one_to_one_edge_quality_v2/`](results/pose_graph_one_to_one_edge_quality_v2/)。
 
+### 回环描述子消融
+
+训练、验证、测试分别使用 fr1/desk（573 帧）、fr1/desk2（612 帧）和 fr1/xyz（790 帧），按序列隔离。除了 HSV，还加入了一个不做任务训练的基线：直接使用 ImageNet MobileNetV3-Small 的 576 维池化特征。no-SE 与 SE 模型使用相同的 1216 个三元组、几何困难负例、超参数和三个随机种子。
+
+| 描述子 | 测试 Recall@1 | Recall@5 | pair F1 | 位姿图 ATE（m） |
+| --- | ---: | ---: | ---: | ---: |
+| HSV 直方图 | 0.9429 | 0.9571 | 0.6241 | 0.026370 |
+| ImageNet 冻结特征 | **0.9857** | 0.9857 | **0.7153** | **0.026200** |
+| MobileNetV3 无 SE | 0.9738 ± 0.0121 | **0.9857 ± 0.0058** | 0.6543 ± 0.0168 | 0.028965 ± 0.001973 |
+| MobileNetV3 + SE | 0.9524 ± 0.0089 | 0.9738 ± 0.0147 | 0.6603 ± 0.0085 | 0.029807 ± 0.000519 |
+
+“±”是三个种子的总体标准差；HSV 和冻结特征是确定性基线，下游位姿图各运行一次。当前任务训练模型都没有超过冻结 ImageNet 特征，SE 虽略微提高平均 pair F1，却降低 Recall@1/5，最终 ATE 也没有改善。因此这个实验的结论是“当前训练方案没有证明 SE 或微调有价值”，而不是把深度模型写成已有优势。逐次 checkpoint 哈希、阈值、检索指标、误回环和位姿图结果见 [`results/loop_learning_multiseed_v2/`](results/loop_learning_multiseed_v2/)。
+
 ## 效果图
 
 真实深度图反投影后的点云：
@@ -183,6 +196,9 @@ powershell -ExecutionPolicy Bypass -File scripts\run_pose_graph.ps1
 
 # NumPy/Open3D 各三次性能复测 + Open3D 2376 帧压力运行
 powershell -ExecutionPolicy Bypass -File scripts\run_performance_benchmark.ps1
+
+# 三随机种子描述子消融 + 8 次下游位姿图
+powershell -ExecutionPolicy Bypass -File scripts\run_loop_learning_multiseed.ps1
 ```
 
 真值文件不是里程计的必需输入。对没有 `groundtruth.txt` 的 RGB-D 目录，或者希望显式关闭评测时：
@@ -212,14 +228,7 @@ bash scripts/build_and_run_cpp.sh \
   artifacts/linux_cpp_full
 ```
 
-### 4. 学习描述子与 ROS2
-
-这些入口保留用于继续实验，结果版本说明分别写在各自结果目录中：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\run_loop_learning.ps1
-powershell -ExecutionPolicy Bypass -File scripts\run_learned_pose_graph.ps1
-```
+### 4. ROS2
 
 ROS2 发布器、Python/C++ 节点、rosbag 和 RViz 的结构见 [`ros2_ws/src/rgbd_odometry_ros/`](ros2_ws/src/rgbd_odometry_ros/)；Ubuntu C++ 全序列入口是 [`scripts/run_ros2_cpp_full_sequence.sh`](scripts/run_ros2_cpp_full_sequence.sh)。
 

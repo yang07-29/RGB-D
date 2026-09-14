@@ -50,7 +50,7 @@ def build_clouds_with_normals(frames, args, rss_samples):
             "frame_index": index, "rgb_timestamp": frame.timestamp, "rgb_path": str(frame.rgb_path), "depth_path": str(frame.depth_path),
             "rgb_depth_offset_s": frame.depth_time_offset_s,
             "rgb_ground_truth_offset_s": frame.ground_truth_time_offset_s if isinstance(frame, RgbdFrame) else None,
-            "point_count": len(points), "rgbd_read_runtime_s": read_runtime, "base_preprocessing_runtime_s": base_preprocess_runtime,
+            "point_count": len(cloud.points), "rgbd_read_runtime_s": read_runtime, "base_preprocessing_runtime_s": base_preprocess_runtime,
             "normal_estimation_runtime_s": normal_runtime, "preprocessing_runtime_s": base_preprocess_runtime + normal_runtime,
             "process_rss_bytes_after_preprocessing": rss,
         })

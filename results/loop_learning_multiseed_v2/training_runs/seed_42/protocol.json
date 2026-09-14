@@ -1,0 +1,23 @@
+{
+  "split_policy": "sequence-isolated: train=fr1/desk, validation=fr1/desk2, test=fr1/xyz",
+  "ground_truth_scope": "training labels, validation threshold selection, and final evaluation only",
+  "candidate_policy": "each evaluation query retrieves only older frames separated by min_frame_separation",
+  "threshold_policy": "maximize pair F1 on validation; freeze before test",
+  "protocol": {
+    "min_frame_separation": 30,
+    "positive_translation_m": 0.2,
+    "positive_rotation_deg": 25.0,
+    "negative_translation_m": 0.5,
+    "negative_rotation_deg": 60.0,
+    "evaluation_step": 5
+  },
+  "frame_counts": {
+    "train": 573,
+    "validation": 612,
+    "test": 790
+  },
+  "training_triplets": 1216,
+  "training_anchors": 304,
+  "negative_sampling": "geometric_hard",
+  "hard_negative_fraction": 0.25
+}

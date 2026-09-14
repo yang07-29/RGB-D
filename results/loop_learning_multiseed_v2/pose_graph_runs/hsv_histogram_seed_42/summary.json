@@ -1,0 +1,314 @@
+{
+  "experiment": "TUM fr1/xyz keyframes, descriptor loop candidates, FPFH/RANSAC, and Open3D pose graph",
+  "created_utc": "2026-09-14T14:20:47.209339+00:00",
+  "dataset": "data\\rgbd_dataset_freiburg1_xyz",
+  "association_protocol": "one_to_one_minimum_offset_greedy_v2",
+  "edge_quality_protocol": "shared_nearest_neighbor_v2 plus backend fitness/inlier RMSE and odometry consistency",
+  "parameters": {
+    "dataset": "data\\rgbd_dataset_freiburg1_xyz",
+    "output": "artifacts\\loop_learning_multiseed_v2\\pose_graph\\hsv_histogram_seed_42",
+    "max_frames": null,
+    "stride": 8,
+    "voxel": 0.05,
+    "min_depth": 0.2,
+    "max_depth": 4.0,
+    "normal_radius": 0.1,
+    "normal_max_nn": 30,
+    "odometry_correspondence": 0.08,
+    "odometry_iterations": 30,
+    "min_sequential_correspondence_ratio": 0.5,
+    "max_sequential_all_point_rmse": 0.08,
+    "keyframe_translation": 0.05,
+    "keyframe_rotation_deg": 10.0,
+    "keyframe_max_gap": 40,
+    "loop_min_separation": 10,
+    "candidate_mode": "descriptor",
+    "descriptor_file": "artifacts\\loop_learning_multiseed_v2\\seed_42\\hsv_histogram_test_descriptors.npy",
+    "descriptor_threshold": 0.9209814071655273,
+    "descriptor_top_k_per_target": 1,
+    "loop_candidate_distance": 0.1,
+    "loop_candidate_rotation_deg": 25.0,
+    "max_loop_candidates": 30,
+    "hard_negative_candidates": 10,
+    "hard_negative_min_distance": 0.4,
+    "feature_radius": 0.25,
+    "ransac_correspondence": 0.075,
+    "ransac_iterations": 50000,
+    "ransac_confidence": 0.999,
+    "loop_refine_correspondence": 0.08,
+    "loop_refine_iterations": 50,
+    "min_global_fitness": 0.15,
+    "min_refined_fitness": 0.45,
+    "max_refined_rmse": 0.04,
+    "min_loop_correspondence_ratio": 0.45,
+    "max_loop_all_point_rmse": 0.12,
+    "max_consistency_translation": 0.08,
+    "max_consistency_rotation_deg": 15.0,
+    "edge_prune_threshold": 0.25,
+    "loop_closure_preference": 0.1,
+    "quiet": true
+  },
+  "frames": 790,
+  "keyframes": 125,
+  "odometry_edges": 124,
+  "sequential_edge_quality": {
+    "accepted_keyframe_icp": 84,
+    "odometry_prediction_fallback": 40
+  },
+  "loop_candidates": 30,
+  "accepted_loop_edges_before_optimization": 21,
+  "active_loop_edges_after_optimization": 21,
+  "posthoc_loop_labels": {
+    "accepted_correct": 20,
+    "accepted_incorrect": 1,
+    "rejected_correct": 9,
+    "rejected_incorrect": 0,
+    "false_accepts": 1,
+    "false_rejects": 9,
+    "note": "Ground truth labels are evaluation-only and never enter candidate generation or acceptance."
+  },
+  "hard_negative_stress": {
+    "candidates": 10,
+    "rejected_by_same_gates": 10,
+    "posthoc_incorrect": 10,
+    "note": "Selected from odometry-distant pairs without ground truth and never inserted into the graph."
+  },
+  "full_frame_odometry": {
+    "method": "open3d_point_to_plane_odometry",
+    "ate": {
+      "rmse_m": 0.05894712292130253,
+      "mean_m": 0.05419415803818944,
+      "median_m": 0.04732465251648908,
+      "max_m": 0.11390227380142881
+    },
+    "rpe_frame_delta_1": {
+      "frame_delta": 1,
+      "pairs": 789,
+      "translation_rmse_m": 0.005687380206811128,
+      "translation_mean_m": 0.00486547583292047,
+      "rotation_rmse_deg": 0.5508802220598943,
+      "rotation_mean_deg": 0.4803422315506338
+    },
+    "alignment_estimated_to_ground_truth": {
+      "rotation": [
+        [
+          -0.08089686182491489,
+          0.5338863279368726,
+          -0.8416775431178872
+        ],
+        [
+          0.9967067118166177,
+          0.04808067593308379,
+          -0.06529915176726969
+        ],
+        [
+          0.005606100836385323,
+          -0.8441881528687192,
+          -0.5360176621992154
+        ]
+      ],
+      "translation_m": [
+        1.4290284495568197,
+        0.6388552479818509,
+        1.668015421270618
+      ]
+    },
+    "rpe_frame_delta_30": {
+      "frame_delta": 30,
+      "pairs": 760,
+      "translation_rmse_m": 0.04637505826263539,
+      "translation_mean_m": 0.042146904012099584,
+      "rotation_rmse_deg": 2.705335698980962,
+      "rotation_mean_deg": 2.315077669601328
+    }
+  },
+  "keyframe_before": {
+    "method": "keyframe_odometry_before_optimization",
+    "ate": {
+      "rmse_m": 0.044337794243966604,
+      "mean_m": 0.041932134500508846,
+      "median_m": 0.041222606959578446,
+      "max_m": 0.07695252486459497
+    },
+    "rpe_frame_delta_1": {
+      "frame_delta": 1,
+      "pairs": 124,
+      "translation_rmse_m": 0.01473273882778984,
+      "translation_mean_m": 0.012208189380464439,
+      "rotation_rmse_deg": 1.2462139327776232,
+      "rotation_mean_deg": 1.0629865795990523
+    },
+    "alignment_estimated_to_ground_truth": {
+      "rotation": [
+        [
+          0.040637671898250384,
+          0.663812866490956,
+          -0.7467938523473201
+        ],
+        [
+          0.9986685022033656,
+          -0.0032140416589645352,
+          0.051486820091171066
+        ],
+        [
+          0.031777387079121394,
+          -0.7478918024803286,
+          -0.6630596122922501
+        ]
+      ],
+      "translation_m": [
+        1.3457008926451424,
+        0.6472984850583732,
+        1.671253069973911
+      ]
+    },
+    "rpe_frame_delta_30": {
+      "frame_delta": 30,
+      "pairs": 95,
+      "translation_rmse_m": 0.0662335826464368,
+      "translation_mean_m": 0.06137377192040324,
+      "rotation_rmse_deg": 2.8884235165738046,
+      "rotation_mean_deg": 2.6662856697973494
+    }
+  },
+  "keyframe_after": {
+    "method": "keyframe_pose_graph_after_optimization",
+    "ate": {
+      "rmse_m": 0.026370099287834826,
+      "mean_m": 0.023953283417812467,
+      "median_m": 0.022837496315013316,
+      "max_m": 0.06298479874423824
+    },
+    "rpe_frame_delta_1": {
+      "frame_delta": 1,
+      "pairs": 124,
+      "translation_rmse_m": 0.01444294157314997,
+      "translation_mean_m": 0.012110870428473638,
+      "rotation_rmse_deg": 1.238726712900063,
+      "rotation_mean_deg": 1.057282184134454
+    },
+    "alignment_estimated_to_ground_truth": {
+      "rotation": [
+        [
+          0.04390985343819565,
+          0.6241455157696683,
+          -0.7800732657357582
+        ],
+        [
+          0.9990182101301476,
+          -0.03202556692169008,
+          0.030610110939038072
+        ],
+        [
+          -0.005877125095829589,
+          -0.7806514831907766,
+          -0.6249389739747785
+        ]
+      ],
+      "translation_m": [
+        1.3604906808406516,
+        0.659569352066971,
+        1.662463333201094
+      ]
+    },
+    "rpe_frame_delta_30": {
+      "frame_delta": 30,
+      "pairs": 95,
+      "translation_rmse_m": 0.03868871775310092,
+      "translation_mean_m": 0.03554997099287844,
+      "rotation_rmse_deg": 2.360672373054469,
+      "rotation_mean_deg": 2.084621412629646
+    }
+  },
+  "forced_bad_edge_stress": {
+    "performed": true,
+    "source_keyframe_id": 57,
+    "target_keyframe_id": 67,
+    "posthoc_gt_label": "incorrect",
+    "gt_translation_error_m": 4.025661952550827,
+    "gt_rotation_error_deg": 113.50745139847803,
+    "metrics_after_forced_insertion": {
+      "method": "pose_graph_with_one_forced_bad_edge",
+      "ate": {
+        "rmse_m": 1.4011281198155765,
+        "mean_m": 1.3831536901411994,
+        "median_m": 1.399625440597068,
+        "max_m": 1.8934662968250047
+      },
+      "rpe_frame_delta_1": {
+        "frame_delta": 1,
+        "pairs": 124,
+        "translation_rmse_m": 0.10643244942582583,
+        "translation_mean_m": 0.03973027969386192,
+        "rotation_rmse_deg": 3.6273295012954394,
+        "rotation_mean_deg": 1.835205110528542
+      },
+      "alignment_estimated_to_ground_truth": {
+        "rotation": [
+          [
+            -0.25527871753015474,
+            0.9654579042123514,
+            -0.052190148208775926
+          ],
+          [
+            0.0522155608388951,
+            -0.04013362447721699,
+            -0.9978290571999806
+          ],
+          [
+            -0.9654565301361007,
+            -0.25744965989532065,
+            -0.04016666574841148
+          ]
+        ],
+        "translation_m": [
+          1.851862123204119,
+          1.6609507512387538,
+          2.5408666878658703
+        ]
+      },
+      "rpe_frame_delta_30": {
+        "frame_delta": 30,
+        "pairs": 95,
+        "translation_rmse_m": 1.5880809193698435,
+        "translation_mean_m": 0.970937892257927,
+        "rotation_rmse_deg": 44.63774196047769,
+        "rotation_mean_deg": 28.004202606945757
+      }
+    },
+    "note": "Evaluation-only adversarial test: one post-hoc incorrect hard negative is inserted as a certain edge, bypassing all production gates."
+  },
+  "performance": {
+    "total_runtime_s": 29.90723050000088,
+    "peak_rss_bytes": 252674048
+  },
+  "environment": {
+    "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:26:47) [MSC v.1942 64 bit (AMD64)]",
+    "open3d": "0.19.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "logical_cpu_count": 24,
+    "gpu": "not used"
+  },
+  "artifacts": [
+    "summary.json",
+    "keyframes.csv",
+    "sequential_edges.csv",
+    "loop_candidates.csv",
+    "hard_negative_candidates.csv",
+    "pose_graph_optimized.json",
+    "trajectory_keyframes_before.txt",
+    "trajectory_keyframes_after.txt",
+    "trajectory_keyframes_before_after.png",
+    "loop_correct_and_rejected_cases.png",
+    "optimized_keyframe_map.ply",
+    "trajectory_keyframes_forced_bad_edge.txt"
+  ],
+  "notes": [
+    "Ground truth is used only for final ATE/RPE and post-hoc loop labels.",
+    "Candidate discovery uses frozen RGB descriptors only; FPFH/RANSAC supplies global initialization.",
+    "Sequential keyframe ICP uses shared final-transform quality; failed ICP edges fall back to the already estimated odometry transform instead of entering the graph as confident ICP.",
+    "Loop acceptance uses backend metrics, shared final-transform quality, and odometry-cycle consistency, not ground truth.",
+    "Reported before/after pose-graph metrics are on the identical selected keyframe timestamps."
+  ]
+}
