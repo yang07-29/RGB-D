@@ -41,6 +41,8 @@ T_w,curr = T_w,prev @ T_prev,curr
 
 不能对 `T_prev,curr` 再取逆。这个方向由合成变换测试和 Python/C++ 全序列交叉结果共同验证。
 
+RGB-D 配对不依赖 groundtruth。数据目录没有真值或命令使用 `--no-evaluation` 时，NumPy/Open3D 仍生成未对齐 TUM 轨迹和逐帧性能文件；只有 ATE/RPE、静止基线和对齐图被省略。正式 790 帧 Open3D 轨迹另由 evo 1.37.1 独立复核，五项 RMSE 最大绝对差为 `1.065e-09`。
+
 传统位姿候选读取估计轨迹；学习候选函数只接收冻结的 RGB 描述子，不接收估计位姿或真值。两条候选支路之后共享 FPFH/RANSAC、ICP 与几何门限。真值只在全部配准结束后计算 ATE/RPE 和事后 correct/incorrect 标签，绝不决定边是否加入位姿图。
 
 ## 学习实验的数据边界（历史 796 帧协议）

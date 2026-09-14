@@ -47,6 +47,10 @@
 
 C++ 的逐帧 CSV、未对齐轨迹和 summary 见 [`results/cpp_one_to_one_quality_v2/`](results/cpp_one_to_one_quality_v2/)。两种实现的 ATE 相差约 0.075 mm，给数据关联、位姿累积和指标实现提供了跨语言核对。性能来自同一台 Windows 主机的单次运行，只用于记录本次实验，不表示硬件无关的速度。
 
+### 独立指标核对
+
+我用 evo 1.37.1 重新读取保存的 Open3D 轨迹。ATE 只做 SE(3) Umeyama 对齐，没有 scale correction；Δ=30 RPE 使用全部 760 个重叠帧对。ATE、Δ=1/30 平移 RPE 和旋转 RPE 五项与项目实现的最大绝对差为 `1.065e-09`。机器可读差值和五个 evo 原始结果包见 [`results/evo_crosscheck_one_to_one_v2/`](results/evo_crosscheck_one_to_one_v2/)。
+
 ## 效果图
 
 真实深度图反投影后的点云：
@@ -129,6 +133,19 @@ conda create --prefix .conda-open3d python=3.12 pip --yes
 # 18 组参数实验与三序列固定配置实验
 powershell -ExecutionPolicy Bypass -File scripts\run_parameter_sweep.ps1
 powershell -ExecutionPolicy Bypass -File scripts\run_multi_sequence_benchmark.ps1
+
+# 独立核对保存轨迹的 ATE/RPE
+.\.conda-open3d\python.exe -m pip install -r requirements-evaluation.lock.txt
+powershell -ExecutionPolicy Bypass -File scripts\run_evo_crosscheck.ps1
+```
+
+真值文件不是里程计的必需输入。对没有 `groundtruth.txt` 的 RGB-D 目录，或者希望显式关闭评测时：
+
+```powershell
+.\.conda-open3d\python.exe -m src.run_odometry `
+  --dataset data\my_rgbd_sequence `
+  --output artifacts\my_trajectory `
+  --no-evaluation
 ```
 
 ### 3. C++17 / CMake

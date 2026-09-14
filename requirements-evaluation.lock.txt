@@ -1,0 +1,14 @@
+-r requirements-open3d-dev.lock.txt
+evo==1.37.1
+argcomplete==3.7.2
+natsort==8.4.0
+numexpr==2.14.2
+pandas==3.0.5
+PyYAML==6.0.3
+rosbags==0.11.5
+apsw==3.53.4.0
+lz4==4.4.5
+ruamel.yaml==0.19.1
+seaborn==0.13.2
+tzdata==2026.4
+zstandard==0.25.0

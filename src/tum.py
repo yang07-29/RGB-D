@@ -11,13 +11,19 @@ from scipy.spatial.transform import Rotation
 
 
 @dataclass(frozen=True)
-class RgbdFrame:
-    """One RGB/depth pair with the closest ground-truth camera pose."""
+class RgbdPair:
+    """One timestamp-associated RGB/depth pair, independent of evaluation data."""
 
     timestamp: float
     rgb_path: Path
     depth_path: Path
     depth_time_offset_s: float
+
+
+@dataclass(frozen=True)
+class RgbdFrame(RgbdPair):
+    """An RGB-D pair with an evaluation-only ground-truth camera pose."""
+
     ground_truth: np.ndarray  # 4x4 camera-to-world matrix
     ground_truth_time_offset_s: float
 
@@ -30,7 +36,7 @@ def _read_index(path: Path) -> list[tuple[float, Path]]:
             continue
         stamp, name = line.split(maxsplit=1)
         rows.append((float(stamp), path.parent / name))
-    return rows
+    return sorted(rows, key=lambda row: row[0])
 
 
 def _associate_one_to_one(first_times: list[float], second_times: list[float], max_offset_s: float) -> list[tuple[int, int]]:
@@ -70,7 +76,66 @@ def _read_ground_truth(path: Path) -> list[tuple[float, np.ndarray]]:
         pose[:3, :3] = Rotation.from_quat([qx, qy, qz, qw]).as_matrix()
         pose[:3, 3] = [tx, ty, tz]
         poses.append((timestamp, pose))
-    return poses
+    return sorted(poses, key=lambda row: row[0])
+
+
+def load_tum_rgbd_pairs(
+    dataset_dir: str | Path,
+    *,
+    max_depth_time_offset_s: float = 0.02,
+) -> list[RgbdPair]:
+    """Load deterministic one-to-one RGB/depth pairs without requiring poses."""
+    root = Path(dataset_dir)
+    rgb = _read_index(root / "rgb.txt")
+    depth = _read_index(root / "depth.txt")
+    if not rgb or not depth:
+        raise ValueError("RGB and depth index files must both contain samples")
+    matches = _associate_one_to_one(
+        [item[0] for item in rgb], [item[0] for item in depth], max_depth_time_offset_s
+    )
+    pairs = [
+        RgbdPair(
+            rgb[rgb_index][0],
+            rgb[rgb_index][1],
+            depth[depth_index][1],
+            abs(depth[depth_index][0] - rgb[rgb_index][0]),
+        )
+        for rgb_index, depth_index in matches
+    ]
+    if len(pairs) < 2:
+        raise RuntimeError("Fewer than two timestamp-associated RGB-D pairs were found")
+    return pairs
+
+
+def associate_ground_truth(
+    pairs: list[RgbdPair],
+    ground_truth_path: str | Path,
+    *,
+    max_ground_truth_time_offset_s: float = 0.02,
+) -> list[RgbdFrame]:
+    """Attach evaluation poses one-to-one without changing the RGB-D loader."""
+    ground_truth = _read_ground_truth(Path(ground_truth_path))
+    if not ground_truth:
+        raise ValueError("Ground-truth file must contain poses")
+    matches = _associate_one_to_one(
+        [pair.timestamp for pair in pairs],
+        [item[0] for item in ground_truth],
+        max_ground_truth_time_offset_s,
+    )
+    frames = [
+        RgbdFrame(
+            pairs[pair_index].timestamp,
+            pairs[pair_index].rgb_path,
+            pairs[pair_index].depth_path,
+            pairs[pair_index].depth_time_offset_s,
+            ground_truth[truth_index][1],
+            abs(ground_truth[truth_index][0] - pairs[pair_index].timestamp),
+        )
+        for pair_index, truth_index in matches
+    ]
+    if len(frames) < 2:
+        raise RuntimeError("Fewer than two timestamp-associated evaluation frames were found")
+    return frames
 
 
 def load_tum_rgbd_frames(
@@ -86,31 +151,12 @@ def load_tum_rgbd_frames(
     convention: camera to world.
     """
     root = Path(dataset_dir)
-    rgb = _read_index(root / "rgb.txt")
-    depth = _read_index(root / "depth.txt")
-    ground_truth = _read_ground_truth(root / "groundtruth.txt")
-    if not rgb or not depth or not ground_truth:
-        raise ValueError("RGB, depth, and ground-truth files must all contain samples")
-
-    rgb_depth_matches = _associate_one_to_one(
-        [item[0] for item in rgb], [item[0] for item in depth], max_depth_time_offset_s
+    pairs = load_tum_rgbd_pairs(root, max_depth_time_offset_s=max_depth_time_offset_s)
+    return associate_ground_truth(
+        pairs,
+        root / "groundtruth.txt",
+        max_ground_truth_time_offset_s=max_ground_truth_time_offset_s,
     )
-    matched_rgb_times = [rgb[rgb_index][0] for rgb_index, _ in rgb_depth_matches]
-    rgbd_ground_truth_matches = _associate_one_to_one(
-        matched_rgb_times, [item[0] for item in ground_truth], max_ground_truth_time_offset_s
-    )
-    frames: list[RgbdFrame] = []
-    for rgb_depth_index, gt_index in rgbd_ground_truth_matches:
-        rgb_index, depth_index = rgb_depth_matches[rgb_depth_index]
-        rgb_time, rgb_path = rgb[rgb_index]
-        depth_time, depth_path = depth[depth_index]
-        gt_time, gt_pose = ground_truth[gt_index]
-        depth_offset = abs(depth_time - rgb_time)
-        gt_offset = abs(gt_time - rgb_time)
-        frames.append(RgbdFrame(rgb_time, rgb_path, depth_path, depth_offset, gt_pose, gt_offset))
-    if len(frames) < 2:
-        raise RuntimeError("Fewer than two timestamp-associated RGB-D frames were found")
-    return frames
 
 
 def pose_to_tum_row(timestamp: float, pose: np.ndarray) -> str:

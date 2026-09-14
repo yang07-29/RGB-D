@@ -21,10 +21,10 @@ from .metrics import absolute_trajectory_error, align_estimated_poses, compose_c
 from .rgbd import depth_to_points, load_png
 from .quality import evaluate_registration_quality, registration_failure_reason
 from .runtime import latency_stats, process_rss_bytes
-from .tum import RgbdFrame, load_tum_rgbd_frames, pose_to_tum_row
+from .tum import RgbdFrame, RgbdPair, associate_ground_truth, load_tum_rgbd_pairs, pose_to_tum_row
 
 
-def make_point_cloud(frame: RgbdFrame, *, stride: int, voxel_size_m: float, min_depth_m: float, max_depth_m: float) -> tuple[np.ndarray, float, float]:
+def make_point_cloud(frame: RgbdPair, *, stride: int, voxel_size_m: float, min_depth_m: float, max_depth_m: float) -> tuple[np.ndarray, float, float]:
     """Read the RGB-D inputs and produce an odometry point cloud.
 
     The RGB image is intentionally read but not used by this depth-only baseline;
@@ -123,7 +123,7 @@ def evaluate(name: str, poses: list[np.ndarray], ground_truth: list[np.ndarray])
     return metrics, aligned
 
 
-def write_trajectory(path: Path, frames: list[RgbdFrame], poses: list[np.ndarray]) -> None:
+def write_trajectory(path: Path, frames: list[RgbdPair], poses: list[np.ndarray]) -> None:
     path.write_text("\n".join(pose_to_tum_row(frame.timestamp, pose) for frame, pose in zip(frames, poses)) + "\n", encoding="utf-8")
 
 
@@ -151,6 +151,8 @@ def plot_trajectories(path: Path, ground_truth: list[np.ndarray], trajectories: 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", type=Path, required=True)
+    parser.add_argument("--ground-truth", type=Path, default=None, help="Optional TUM ground-truth file; defaults to DATASET/groundtruth.txt when present.")
+    parser.add_argument("--no-evaluation", action="store_true", help="Run odometry on all RGB-D pairs without reading ground truth.")
     parser.add_argument("--output", type=Path, default=Path("artifacts/tum_fr1_xyz"))
     parser.add_argument("--max-frames", type=int, default=None, help="Use the first N associated frames; default uses all.")
     parser.add_argument("--frame-step", type=int, default=1, help="Use every Nth associated frame.")
@@ -171,7 +173,15 @@ def main() -> None:
     if args.max_acceptable_rmse is None:
         args.max_acceptable_rmse = args.max_correspondence
 
-    frames = load_tum_rgbd_frames(args.dataset)[::args.frame_step]
+    pairs = load_tum_rgbd_pairs(args.dataset)
+    default_ground_truth = args.dataset / "groundtruth.txt"
+    ground_truth_path = args.ground_truth if args.ground_truth is not None else default_ground_truth
+    if args.ground_truth is not None and not args.ground_truth.is_file():
+        parser.error(f"Ground-truth file does not exist: {args.ground_truth}")
+    evaluation_available = not args.no_evaluation and ground_truth_path.is_file()
+    frames: list[RgbdPair] = (
+        associate_ground_truth(pairs, ground_truth_path) if evaluation_available else pairs
+    )[::args.frame_step]
     if args.max_frames is not None:
         frames = frames[:args.max_frames]
     if len(frames) < 3:
@@ -192,13 +202,12 @@ def main() -> None:
             rss_samples.append(rss)
         frame_rows.append({
             "frame_index": index, "rgb_timestamp": frame.timestamp, "rgb_path": str(frame.rgb_path), "depth_path": str(frame.depth_path),
-            "rgb_depth_offset_s": frame.depth_time_offset_s, "rgb_ground_truth_offset_s": frame.ground_truth_time_offset_s,
+            "rgb_depth_offset_s": frame.depth_time_offset_s,
+            "rgb_ground_truth_offset_s": frame.ground_truth_time_offset_s if isinstance(frame, RgbdFrame) else None,
             "point_count": len(cloud), "rgbd_read_runtime_s": rgbd_read_runtime, "preprocessing_runtime_s": preprocessing_runtime,
             "process_rss_bytes_after_preprocessing": rss,
         })
     cloud_runtime = sum(float(row["rgbd_read_runtime_s"]) + float(row["preprocessing_runtime_s"]) for row in frame_rows)
-    ground_truth = [frame.ground_truth for frame in frames]
-
     identity_poses = run_identity(len(frames))
     icp_poses, step_rows = run_icp(clouds, max_iterations=args.max_iterations, correspondence_distance_m=args.max_correspondence, min_correspondence_ratio=args.min_correspondence_ratio, max_acceptable_rmse_m=args.max_acceptable_rmse, rss_samples=rss_samples)
     for row in step_rows:
@@ -206,12 +215,19 @@ def main() -> None:
         row["rgbd_read_runtime_s"] = frame_rows[index]["rgbd_read_runtime_s"]
         row["preprocessing_runtime_s"] = frame_rows[index]["preprocessing_runtime_s"]
         row["end_to_end_runtime_s"] = float(row["registration_runtime_s"]) + float(row["rgbd_read_runtime_s"]) + float(row["preprocessing_runtime_s"])
-    identity_metrics, identity_aligned = evaluate("identity_no_motion_baseline", identity_poses, ground_truth)
-    icp_metrics, icp_aligned = evaluate("frame_to_frame_point_to_point_icp", icp_poses, ground_truth)
-
     write_trajectory(args.output / "trajectory_icp_local.txt", frames, icp_poses)
-    write_trajectory(args.output / "trajectory_icp_ate_aligned.txt", frames, icp_aligned)
-    write_trajectory(args.output / "trajectory_identity_ate_aligned.txt", frames, identity_aligned)
+    methods: list[dict[str, object]] = []
+    generated_artifacts = ["trajectory_icp_local.txt", "icp_steps.csv", "frame_timings.csv"]
+    if evaluation_available:
+        evaluated_frames = [frame for frame in frames if isinstance(frame, RgbdFrame)]
+        ground_truth = [frame.ground_truth for frame in evaluated_frames]
+        identity_metrics, identity_aligned = evaluate("identity_no_motion_baseline", identity_poses, ground_truth)
+        icp_metrics, icp_aligned = evaluate("frame_to_frame_point_to_point_icp", icp_poses, ground_truth)
+        methods = [identity_metrics, icp_metrics]
+        write_trajectory(args.output / "trajectory_icp_ate_aligned.txt", frames, icp_aligned)
+        write_trajectory(args.output / "trajectory_identity_ate_aligned.txt", frames, identity_aligned)
+        plot_trajectories(args.output / "trajectory_xy_xz.png", ground_truth, {"ICP": icp_aligned, "identity baseline": identity_aligned})
+        generated_artifacts += ["trajectory_icp_ate_aligned.txt", "trajectory_identity_ate_aligned.txt", "trajectory_xy_xz.png"]
     with (args.output / "icp_steps.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(step_rows[0]))
         writer.writeheader()
@@ -220,8 +236,6 @@ def main() -> None:
         writer = csv.DictWriter(handle, fieldnames=list(frame_rows[0]))
         writer.writeheader()
         writer.writerows(frame_rows)
-    plot_trajectories(args.output / "trajectory_xy_xz.png", ground_truth, {"ICP": icp_aligned, "identity baseline": identity_aligned})
-
     successful = [row for row in step_rows if row["status"] == "ok"]
     final_rss = process_rss_bytes()
     if final_rss is not None:
@@ -231,14 +245,19 @@ def main() -> None:
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "dataset": str(args.dataset),
         "association_protocol": "one_to_one_minimum_offset_greedy_v2",
-        "parameters": vars(args) | {"dataset": str(args.dataset), "output": str(args.output)},
+        "parameters": {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()},
         "frames": {
             "count": len(frames), "first_timestamp": frames[0].timestamp, "last_timestamp": frames[-1].timestamp,
             "mean_rgb_depth_offset_s": float(np.mean([frame.depth_time_offset_s for frame in frames])),
-            "mean_rgb_ground_truth_offset_s": float(np.mean([frame.ground_truth_time_offset_s for frame in frames])),
+            "mean_rgb_ground_truth_offset_s": float(np.mean([frame.ground_truth_time_offset_s for frame in frames if isinstance(frame, RgbdFrame)])) if evaluation_available else None,
             "point_counts": {"mean": float(np.mean([len(cloud) for cloud in clouds])), "min": int(min(map(len, clouds))), "max": int(max(map(len, clouds)))},
         },
-        "methods": [identity_metrics, icp_metrics],
+        "evaluation": {
+            "available": evaluation_available,
+            "ground_truth_path": str(ground_truth_path) if evaluation_available else None,
+            "reason": None if evaluation_available else ("disabled_by_user" if args.no_evaluation else "groundtruth_file_not_found"),
+        },
+        "methods": methods,
         "icp_performance": {
             "accepted_pairs": len(successful), "rejected_or_exception_pairs": len(step_rows) - len(successful),
             "registration_latency": latency_stats([float(row["registration_runtime_s"]) for row in successful]),
@@ -251,9 +270,9 @@ def main() -> None:
             "process_rss": {"sampling": "before the run, after every frame preprocessing and registration, and at experiment end", "peak_bytes": max(rss_samples) if rss_samples else None, "final_bytes": final_rss},
         },
         "environment": {"python": sys.version, "numpy": np.__version__, "scipy": scipy.__version__, "pillow": PIL.__version__, "platform": platform.platform(), "processor": platform.processor(), "logical_cpu_count": os.cpu_count(), "gpu": "not used (CPU-only NumPy/SciPy baseline)"},
-        "artifacts": ["trajectory_icp_local.txt", "trajectory_icp_ate_aligned.txt", "trajectory_identity_ate_aligned.txt", "icp_steps.csv", "frame_timings.csv", "trajectory_xy_xz.png"],
+        "artifacts": generated_artifacts,
         "quality_protocol": "shared_nearest_neighbor_v2: final-transform source-to-target; gated correspondence ratio and inlier RMSE; all-source-point RMSE for residual rejection",
-        "notes": ["ICP uses only consecutive depth point clouds and an identity relative-pose initialization.", "A pair is rejected when the shared final-transform correspondence ratio is too low or all-source-point nearest-neighbor RMSE is too high; rejected pairs retain the previous pose.", "RGB images are read for end-to-end RGB-D input timing but are not used by this depth-only ICP solver.", "Ground truth is used only after odometry for evaluation and ATE alignment.", "Identity is a no-motion baseline on exactly the same associated frames."],
+        "notes": ["ICP uses only consecutive depth point clouds and an identity relative-pose initialization.", "A pair is rejected when the shared final-transform correspondence ratio is too low or all-source-point nearest-neighbor RMSE is too high; rejected pairs retain the previous pose.", "RGB images are read for end-to-end RGB-D input timing but are not used by this depth-only ICP solver.", "Ground truth is optional and, when present, is attached only after RGB-D association for evaluation.", "Identity is reported only when evaluation ground truth is available."],
     }
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     if not args.quiet:

@@ -22,7 +22,7 @@ from .metrics import align_estimated_poses, absolute_trajectory_error, compose_c
 from .quality import evaluate_registration_quality, registration_failure_reason
 from .run_odometry import evaluate, make_point_cloud, plot_trajectories, run_identity, write_trajectory
 from .runtime import latency_stats, process_rss_bytes
-from .tum import load_tum_rgbd_frames
+from .tum import RgbdFrame, associate_ground_truth, load_tum_rgbd_pairs
 
 
 def build_clouds_with_normals(frames, args, rss_samples):
@@ -42,7 +42,8 @@ def build_clouds_with_normals(frames, args, rss_samples):
             rss_samples.append(rss)
         rows.append({
             "frame_index": index, "rgb_timestamp": frame.timestamp, "rgb_path": str(frame.rgb_path), "depth_path": str(frame.depth_path),
-            "rgb_depth_offset_s": frame.depth_time_offset_s, "rgb_ground_truth_offset_s": frame.ground_truth_time_offset_s,
+            "rgb_depth_offset_s": frame.depth_time_offset_s,
+            "rgb_ground_truth_offset_s": frame.ground_truth_time_offset_s if isinstance(frame, RgbdFrame) else None,
             "point_count": len(points), "rgbd_read_runtime_s": read_runtime, "base_preprocessing_runtime_s": base_preprocess_runtime,
             "normal_estimation_runtime_s": normal_runtime, "preprocessing_runtime_s": base_preprocess_runtime + normal_runtime,
             "process_rss_bytes_after_preprocessing": rss,
@@ -107,6 +108,8 @@ def run_point_to_plane(clouds, args, rss_samples):
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", type=Path, required=True)
+    parser.add_argument("--ground-truth", type=Path, default=None, help="Optional TUM ground-truth file; defaults to DATASET/groundtruth.txt when present.")
+    parser.add_argument("--no-evaluation", action="store_true", help="Run odometry on all RGB-D pairs without reading ground truth.")
     parser.add_argument("--output", type=Path, default=Path("artifacts/tum_fr1_xyz_open3d_point_to_plane"))
     parser.add_argument("--max-frames", type=int, default=None)
     parser.add_argument("--frame-step", type=int, default=1)
@@ -127,7 +130,13 @@ def main() -> None:
     if args.frame_step < 1 or args.stride < 1 or args.voxel <= 0 or args.normal_radius <= 0:
         parser.error("frame-step, stride, voxel, and normal-radius must be positive")
 
-    frames = load_tum_rgbd_frames(args.dataset)[::args.frame_step]
+    pairs = load_tum_rgbd_pairs(args.dataset)
+    default_ground_truth = args.dataset / "groundtruth.txt"
+    ground_truth_path = args.ground_truth if args.ground_truth is not None else default_ground_truth
+    if args.ground_truth is not None and not args.ground_truth.is_file():
+        parser.error(f"Ground-truth file does not exist: {args.ground_truth}")
+    evaluation_available = not args.no_evaluation and ground_truth_path.is_file()
+    frames = (associate_ground_truth(pairs, ground_truth_path) if evaluation_available else pairs)[::args.frame_step]
     if args.max_frames is not None:
         frames = frames[:args.max_frames]
     if len(frames) < 3:
@@ -136,24 +145,29 @@ def main() -> None:
     total_start = time.perf_counter()
     rss_samples = [rss for rss in [process_rss_bytes()] if rss is not None]
     clouds, frame_rows = build_clouds_with_normals(frames, args, rss_samples)
-    ground_truth = [frame.ground_truth for frame in frames]
     poses, pair_rows = run_point_to_plane(clouds, args, rss_samples)
     for row in pair_rows:
         frame_row = frame_rows[int(row["pair_index"])]
         row["rgbd_read_runtime_s"] = frame_row["rgbd_read_runtime_s"]
         row["preprocessing_runtime_s"] = frame_row["preprocessing_runtime_s"]
         row["end_to_end_runtime_s"] = float(row["registration_runtime_s"]) + float(row["rgbd_read_runtime_s"]) + float(row["preprocessing_runtime_s"])
-    identity_metrics, identity_aligned = evaluate("identity_no_motion_baseline", run_identity(len(frames)), ground_truth)
-    metrics, aligned = evaluate("open3d_point_to_plane_icp", poses, ground_truth)
     write_trajectory(args.output / "trajectory_open3d_local.txt", frames, poses)
-    write_trajectory(args.output / "trajectory_open3d_ate_aligned.txt", frames, aligned)
-    write_trajectory(args.output / "trajectory_identity_ate_aligned.txt", frames, identity_aligned)
+    methods: list[dict[str, object]] = []
+    generated_artifacts = ["trajectory_open3d_local.txt", "frame_timings.csv", "open3d_steps.csv"]
+    if evaluation_available:
+        ground_truth = [frame.ground_truth for frame in frames if isinstance(frame, RgbdFrame)]
+        identity_metrics, identity_aligned = evaluate("identity_no_motion_baseline", run_identity(len(frames)), ground_truth)
+        metrics, aligned = evaluate("open3d_point_to_plane_icp", poses, ground_truth)
+        methods = [identity_metrics, metrics]
+        write_trajectory(args.output / "trajectory_open3d_ate_aligned.txt", frames, aligned)
+        write_trajectory(args.output / "trajectory_identity_ate_aligned.txt", frames, identity_aligned)
+        plot_trajectories(args.output / "trajectory_xy_xz.png", ground_truth, {"Open3D point-to-plane ICP": aligned, "identity baseline": identity_aligned})
+        generated_artifacts += ["trajectory_open3d_ate_aligned.txt", "trajectory_identity_ate_aligned.txt", "trajectory_xy_xz.png"]
     for name, rows in (("frame_timings.csv", frame_rows), ("open3d_steps.csv", pair_rows)):
         with (args.output / name).open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
             writer.writeheader()
             writer.writerows(rows)
-    plot_trajectories(args.output / "trajectory_xy_xz.png", ground_truth, {"Open3D point-to-plane ICP": aligned, "identity baseline": identity_aligned})
     accepted = [row for row in pair_rows if row["status"] == "ok"]
     final_rss = process_rss_bytes()
     if final_rss is not None:
@@ -165,9 +179,14 @@ def main() -> None:
         "parameters": {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()},
         "frames": {"count": len(frames), "first_timestamp": frames[0].timestamp, "last_timestamp": frames[-1].timestamp,
                    "mean_rgb_depth_offset_s": float(np.mean([frame.depth_time_offset_s for frame in frames])),
-                   "mean_rgb_ground_truth_offset_s": float(np.mean([frame.ground_truth_time_offset_s for frame in frames])),
+                   "mean_rgb_ground_truth_offset_s": float(np.mean([frame.ground_truth_time_offset_s for frame in frames if isinstance(frame, RgbdFrame)])) if evaluation_available else None,
                    "point_counts": {"mean": float(np.mean([len(cloud.points) for cloud in clouds])), "min": min(map(lambda cloud: len(cloud.points), clouds)), "max": max(map(lambda cloud: len(cloud.points), clouds))}},
-        "methods": [identity_metrics, metrics],
+        "evaluation": {
+            "available": evaluation_available,
+            "ground_truth_path": str(ground_truth_path) if evaluation_available else None,
+            "reason": None if evaluation_available else ("disabled_by_user" if args.no_evaluation else "groundtruth_file_not_found"),
+        },
+        "methods": methods,
         "performance": {"accepted_pairs": len(accepted), "rejected_or_exception_pairs": len(pair_rows) - len(accepted),
                         "rgbd_read_latency": latency_stats([float(row["rgbd_read_runtime_s"]) for row in frame_rows]),
                         "preprocessing_including_normals_latency": latency_stats([float(row["preprocessing_runtime_s"]) for row in frame_rows]),
@@ -177,7 +196,8 @@ def main() -> None:
                         "total_runtime_s": time.perf_counter() - total_start},
         "environment": {"python": sys.version, "open3d": o3d.__version__, "numpy": np.__version__, "scipy": scipy.__version__, "pillow": PIL.__version__, "matplotlib": matplotlib.__version__, "platform": platform.platform(), "processor": platform.processor(), "logical_cpu_count": os.cpu_count(), "gpu": "not used"},
         "quality_protocol": "shared_nearest_neighbor_v2: final-transform source-to-target; gated correspondence ratio and inlier RMSE; all-source-point RMSE for residual rejection",
-        "notes": ["Uses exactly the same deterministic association, final-transform registration quality, and ATE/RPE functions as the NumPy baseline.", "Ground truth is evaluation-only.", "Open3D fitness/inlier RMSE are retained for diagnostics; acceptance uses the shared correspondence ratio and all-source-point RMSE. Rejected pairs retain the previous pose."],
+        "artifacts": generated_artifacts,
+        "notes": ["Uses exactly the same deterministic association, final-transform registration quality, and ATE/RPE functions as the NumPy baseline.", "Ground truth is optional and evaluation-only.", "Open3D fitness/inlier RMSE are retained for diagnostics; acceptance uses the shared correspondence ratio and all-source-point RMSE. Rejected pairs retain the previous pose."],
     }
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     if not args.quiet:

@@ -57,3 +57,15 @@ def test_cpp_full_result_matches_python_protocol_and_metrics():
     assert abs(cpp["ate"]["rmse_m"] - python_method["ate"]["rmse_m"]) < 1e-4
     assert abs(cpp["rpe_frame_delta_1"]["translation_rmse_m"] - python_method["rpe_frame_delta_1"]["translation_rmse_m"]) < 1e-6
     assert abs(cpp["rpe_frame_delta_1"]["rotation_rmse_deg"] - python_method["rpe_frame_delta_1"]["rotation_rmse_deg"]) < 2e-5
+
+
+def test_evo_crosscheck_is_within_frozen_tolerance():
+    path = ROOT / "results" / "evo_crosscheck_one_to_one_v2" / "crosscheck.json"
+    report = json.loads(path.read_text(encoding="utf-8"))
+    assert report["tool"] == {"name": "evo", "version": "1.37.1"}
+    assert report["ape_alignment"] == "SE(3) Umeyama, scale correction disabled"
+    assert report["passed"] is True
+    assert report["maximum_absolute_difference"] <= report["tolerance"] == 1e-8
+    assert report["comparisons"]["ate_translation"]["samples"] == 790
+    assert report["comparisons"]["rpe_delta1_translation"]["samples"] == 789
+    assert report["comparisons"]["rpe_delta30_translation"]["samples"] == 760

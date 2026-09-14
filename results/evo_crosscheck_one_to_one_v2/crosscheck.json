@@ -1,0 +1,46 @@
+{
+  "tool": {
+    "name": "evo",
+    "version": "1.37.1"
+  },
+  "estimated_trajectory": "artifacts\\parameter_sweep_one_to_one_quality_v2\\open3d_point_to_plane\\voxel_0.05_corr_0.08\\trajectory_open3d_local.txt",
+  "reference_trajectory": "data\\rgbd_dataset_freiburg1_xyz\\groundtruth.txt",
+  "association_max_difference_s": 0.02,
+  "ape_alignment": "SE(3) Umeyama, scale correction disabled",
+  "rpe_pairing": "frame delta; all overlapping pairs for delta=30",
+  "tolerance": 1e-08,
+  "maximum_absolute_difference": 1.0651840520736755e-09,
+  "passed": true,
+  "comparisons": {
+    "ate_translation": {
+      "project_rmse": 0.05894712292130211,
+      "evo_rmse": 0.05894712292423806,
+      "absolute_difference": 2.935950094151707e-12,
+      "samples": 790
+    },
+    "rpe_delta1_translation": {
+      "project_rmse": 0.005687380206811124,
+      "evo_rmse": 0.005687380211793726,
+      "absolute_difference": 4.982602004599546e-12,
+      "samples": 789
+    },
+    "rpe_delta1_rotation": {
+      "project_rmse": 0.5508802220660375,
+      "evo_rmse": 0.5508802231312215,
+      "absolute_difference": 1.0651840520736755e-09,
+      "samples": 789
+    },
+    "rpe_delta30_translation": {
+      "project_rmse": 0.046375058262635424,
+      "evo_rmse": 0.046375058241958235,
+      "absolute_difference": 2.0677189127571438e-11,
+      "samples": 760
+    },
+    "rpe_delta30_rotation": {
+      "project_rmse": 2.705335698982231,
+      "evo_rmse": 2.705335698119532,
+      "absolute_difference": 8.626992453741877e-10,
+      "samples": 760
+    }
+  }
+}

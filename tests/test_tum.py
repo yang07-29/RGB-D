@@ -6,10 +6,30 @@ import numpy as np
 
 from scipy.spatial.transform import Rotation
 
-from src.tum import load_tum_rgbd_frames, pose_to_tum_row, read_tum_trajectory
+from src.tum import associate_ground_truth, load_tum_rgbd_frames, load_tum_rgbd_pairs, pose_to_tum_row, read_tum_trajectory
 
 
 class TumAssociationTests(unittest.TestCase):
+    def test_rgbd_pairs_load_without_ground_truth_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "rgb.txt").write_text("2.000 rgb/b.png\n1.000 rgb/a.png\n", encoding="utf-8")
+            (root / "depth.txt").write_text("1.004 depth/a.png\n2.006 depth/b.png\n", encoding="utf-8")
+            pairs = load_tum_rgbd_pairs(root, max_depth_time_offset_s=0.01)
+        self.assertEqual([pair.timestamp for pair in pairs], [1.0, 2.0])
+        self.assertEqual([pair.depth_path.name for pair in pairs], ["a.png", "b.png"])
+
+    def test_ground_truth_attachment_is_a_separate_step(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "rgb.txt").write_text("1.000 rgb/a.png\n2.000 rgb/b.png\n", encoding="utf-8")
+            (root / "depth.txt").write_text("1.004 depth/a.png\n2.006 depth/b.png\n", encoding="utf-8")
+            truth = root / "truth.txt"
+            truth.write_text("1.002 1 0 0 0 0 0 1\n2.002 2 0 0 0 0 0 1\n", encoding="utf-8")
+            pairs = load_tum_rgbd_pairs(root)
+            frames = associate_ground_truth(pairs, truth)
+        self.assertEqual([frame.ground_truth[0, 3] for frame in frames], [1.0, 2.0])
+
     def test_nearest_timestamp_association_respects_both_thresholds(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
