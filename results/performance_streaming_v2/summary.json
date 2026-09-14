@@ -1,0 +1,95 @@
+{
+  "experiment": "Open3D streaming performance protocol v2",
+  "created_utc": "2026-09-14T13:28:19.363457+00:00",
+  "independent_full_sequence_runs": 3,
+  "frames_per_run": 790,
+  "methods": {
+    "numpy": {
+      "input_to_pose_mean_ms": {
+        "mean": 19.877133289462606,
+        "std": 0.3511847933885213,
+        "min": 19.383827631616825,
+        "max": 20.17361868418352
+      },
+      "input_to_pose_p95_ms": {
+        "mean": 36.362238333792135,
+        "std": 0.6638999929155573
+      },
+      "peak_rss_mib": {
+        "mean": 76.47265625,
+        "min": 75.12109375,
+        "max": 77.4609375
+      }
+    },
+    "open3d": {
+      "input_to_pose_mean_ms": {
+        "mean": 29.912133684185168,
+        "std": 0.11182233853134255,
+        "min": 29.755087499971093,
+        "max": 30.006741710540634
+      },
+      "input_to_pose_p95_ms": {
+        "mean": 33.272453334120655,
+        "std": 0.14360808229595284
+      },
+      "peak_rss_mib": {
+        "mean": 153.96744791666666,
+        "min": 152.84765625,
+        "max": 154.71484375
+      }
+    }
+  },
+  "soak_run": {
+    "method": "open3d",
+    "run": "soak_3x",
+    "frames": 2376,
+    "evaluation_available": false,
+    "ate_rmse_m": null,
+    "input_to_pose_mean_ms": 29.45638746804165,
+    "input_to_pose_median_ms": 29.068599998936406,
+    "input_to_pose_p95_ms": 32.84747500129015,
+    "input_to_pose_fps": 33.94849423015425,
+    "compute_mean_ms": 16.01268474000158,
+    "compute_p95_ms": 18.868124999244174,
+    "peak_rss_bytes": 175972352,
+    "steady_rss_growth_bytes": 25735168,
+    "rss_slope_bytes_per_frame": 10499.94392621945
+  },
+  "soak_input_frames_per_cycle": 792,
+  "soak_cycle_rss": [
+    {
+      "cycle": 1,
+      "frames": 792,
+      "start_bytes": 147009536,
+      "end_bytes": 161198080,
+      "growth_bytes": 14188544
+    },
+    {
+      "cycle": 2,
+      "frames": 792,
+      "start_bytes": 161206272,
+      "end_bytes": 168615936,
+      "growth_bytes": 7409664
+    },
+    {
+      "cycle": 3,
+      "frames": 792,
+      "start_bytes": 169193472,
+      "end_bytes": 175714304,
+      "growth_bytes": 6520832
+    }
+  ],
+  "scope": {
+    "rgbd_read": "decode one RGB image and one depth image from local storage",
+    "preprocessing": "depth back-projection, filtering/downsampling, and backend-required normal estimation",
+    "registration": "ICP, final-transform quality calculation, acceptance decision, and pose accumulation",
+    "compute": "preprocessing + registration; excludes RGB-D decode",
+    "input_to_pose": "RGB/depth decode + point-cloud preprocessing + registration/pose decision; excludes association, evaluation, plotting, artifact serialization, and RSS sampling",
+    "instrumentation": "per-frame RSS sampling and CSV/JSON/image writes are outside input-to-pose timing"
+  },
+  "notes": [
+    "Each repeat is a fresh process; both methods use the same frozen 790-frame association and parameters.",
+    "The soak run replays all 792 RGB-D-only pairs three times with monotonic synthetic timestamps; it is performance-only and has no ATE/RPE.",
+    "RSS is sampled after each frame and outside the input-to-pose timer."
+  ]
+}

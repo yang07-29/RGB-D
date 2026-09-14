@@ -42,6 +42,14 @@ def summarize(path: Path) -> dict[str, object]:
         "unsynchronized_or_pending_final": final_pending,
         "process_peak_rss_bytes": max(rss_values) if rss_values else None,
         "gpu": "not used",
+        "measurement_scope": {
+            "callback_latency_ms": (
+                "synchronized callback entry through image conversion, point-cloud/ICP processing, "
+                "ROS publication, and trajectory stream insertion; ends before metrics CSV serialization, "
+                "RSS query, metrics flush, and periodic logging"
+            ),
+            "process_peak_rss_bytes": "OS-reported peak resident set queried once per processed callback",
+        },
         "note": "Pending count is sampled during callbacks; inspect node shutdown log for the final post-playback count.",
     }
 

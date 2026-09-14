@@ -226,6 +226,9 @@ private:
         }
 
         ++processed_;
+        // This is callback-to-output latency. Instrumentation below (RSS query,
+        // metrics serialization/flush, and logging) is deliberately excluded
+        // and documented by summarize_ros2_metrics.py.
         const double latency_ms = std::chrono::duration<double, std::milli>(
             std::chrono::steady_clock::now() - callback_start).count();
         metrics_ << std::setprecision(12) << processed_ << ',' << stamp_seconds(rgb_message->header.stamp) << ','

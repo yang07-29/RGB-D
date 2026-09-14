@@ -18,6 +18,7 @@ import scipy
 
 from .geometry import icp_point_to_point, voxel_downsample
 from .metrics import absolute_trajectory_error, align_estimated_poses, compose_camera_to_world, relative_pose_error
+from .performance_protocol import summarize_frame_performance, summarize_rss_trend
 from .rgbd import depth_to_points, load_png
 from .quality import evaluate_registration_quality, registration_failure_reason
 from .runtime import latency_stats, process_rss_bytes
@@ -109,6 +110,109 @@ def run_icp(
             rss_samples.append(rss)
         rows[-1]["process_rss_bytes_after_registration"] = rss
     return poses, rows
+
+
+def run_streaming_icp(
+    frames: list[RgbdPair], args, rss_samples: list[int]
+) -> tuple[list[np.ndarray], list[dict[str, object]], list[dict[str, object]], list[int]]:
+    """Process one RGB-D frame at a time while retaining only the previous cloud."""
+    poses = [np.eye(4)]
+    pair_rows: list[dict[str, object]] = []
+    frame_rows: list[dict[str, object]] = []
+    point_counts: list[int] = []
+    previous_cloud: np.ndarray | None = None
+    for index, frame in enumerate(frames):
+        cloud, read_runtime, preprocessing_runtime = make_point_cloud(
+            frame,
+            stride=args.stride,
+            voxel_size_m=args.voxel,
+            min_depth_m=args.min_depth,
+            max_depth_m=args.max_depth,
+        )
+        registration_runtime = 0.0
+        pair_row: dict[str, object] | None = None
+        if previous_cloud is not None:
+            registration_start = time.perf_counter()
+            try:
+                transform, result, quality, reason = _estimate_icp_transform(
+                    cloud,
+                    previous_cloud,
+                    initial_transform=np.eye(4),
+                    max_iterations=args.max_iterations,
+                    correspondence_distance_m=args.max_correspondence,
+                    min_correspondence_ratio=args.min_correspondence_ratio,
+                    max_acceptable_rmse_m=args.max_acceptable_rmse,
+                )
+                accepted = reason is None
+                poses.append(compose_camera_to_world(poses[-1], transform) if accepted else poses[-1].copy())
+                pair_row = {
+                    "pair_index": index,
+                    "source_points": len(cloud),
+                    "target_points": len(previous_cloud),
+                    "status": "ok" if accepted else f"rejected: {reason}",
+                    "iterations": result.iterations,
+                    "correspondences": quality.correspondences,
+                    "correspondence_ratio": quality.correspondence_ratio,
+                    "inlier_rmse_m": quality.inlier_rmse_m,
+                    "all_point_rmse_m": quality.all_point_rmse_m,
+                    "nearest_neighbor_rmse_m": quality.all_point_rmse_m,
+                    "accepted": accepted,
+                    "recovery_attempted": False,
+                    "recovery_succeeded": False,
+                }
+            except (RuntimeError, ValueError) as error:
+                poses.append(poses[-1].copy())
+                pair_row = {
+                    "pair_index": index,
+                    "source_points": len(cloud),
+                    "target_points": len(previous_cloud),
+                    "status": f"failed: {error}",
+                    "iterations": 0,
+                    "correspondences": 0,
+                    "correspondence_ratio": 0.0,
+                    "inlier_rmse_m": None,
+                    "all_point_rmse_m": None,
+                    "nearest_neighbor_rmse_m": None,
+                    "accepted": False,
+                    "recovery_attempted": False,
+                    "recovery_succeeded": False,
+                }
+            registration_runtime = time.perf_counter() - registration_start
+
+        compute_runtime = preprocessing_runtime + registration_runtime
+        input_to_pose_runtime = read_runtime + compute_runtime
+        rss = process_rss_bytes()
+        if rss is not None:
+            rss_samples.append(rss)
+        frame_rows.append({
+            "frame_index": index,
+            "rgb_timestamp": frame.timestamp,
+            "rgb_path": str(frame.rgb_path),
+            "depth_path": str(frame.depth_path),
+            "rgb_depth_offset_s": frame.depth_time_offset_s,
+            "rgb_ground_truth_offset_s": frame.ground_truth_time_offset_s if isinstance(frame, RgbdFrame) else None,
+            "point_count": len(cloud),
+            "rgbd_read_runtime_s": read_runtime,
+            "preprocessing_runtime_s": preprocessing_runtime,
+            "registration_runtime_s": registration_runtime,
+            "compute_runtime_s": compute_runtime,
+            "input_to_pose_runtime_s": input_to_pose_runtime,
+            "process_rss_bytes_after_frame": rss,
+        })
+        if pair_row is not None:
+            pair_row.update({
+                "registration_runtime_s": registration_runtime,
+                "rgbd_read_runtime_s": read_runtime,
+                "preprocessing_runtime_s": preprocessing_runtime,
+                "compute_runtime_s": compute_runtime,
+                "end_to_end_runtime_s": input_to_pose_runtime,
+                "input_to_pose_runtime_s": input_to_pose_runtime,
+                "process_rss_bytes_after_registration": rss,
+            })
+            pair_rows.append(pair_row)
+        point_counts.append(len(cloud))
+        previous_cloud = cloud
+    return poses, pair_rows, frame_rows, point_counts
 
 
 def _estimate_icp_transform(
@@ -422,12 +526,15 @@ def main() -> None:
     parser.add_argument("--recovery-coarse-voxel", type=float, default=0.12, help="Coarse voxel size used by recovery ICP.")
     parser.add_argument("--recovery-distance-multiplier", type=float, default=2.5, help="Coarse recovery correspondence gate multiplier.")
     parser.add_argument("--lost-after", type=int, default=2, help="Declare a tracking-loss event after this many consecutive rejected frames.")
+    parser.add_argument("--warmup-frames", type=int, default=30, help="Exclude these initial frame indices from steady-state latency statistics.")
     parser.add_argument("--quiet", action="store_true", help="Write all artifacts but do not print the summary JSON.")
     args = parser.parse_args()
     if args.frame_step < 1 or args.stride < 1 or args.voxel <= 0 or args.recovery_coarse_voxel <= 0:
         parser.error("frame-step, stride, voxel, and recovery-coarse-voxel must be positive")
     if args.recovery_distance_multiplier < 1 or args.lost_after < 1:
         parser.error("recovery-distance-multiplier and lost-after must be at least one")
+    if args.warmup_frames < 0:
+        parser.error("warmup-frames must be non-negative")
     if not 0 < args.min_correspondence_ratio <= 1:
         parser.error("min-correspondence-ratio must be in (0, 1]")
     if args.max_acceptable_rmse is None:
@@ -446,30 +553,32 @@ def main() -> None:
         frames = frames[:args.max_frames]
     if len(frames) < 3:
         parser.error("At least three associated frames are required")
+    effective_warmup_frames = min(args.warmup_frames, len(frames) - 1)
     args.output.mkdir(parents=True, exist_ok=True)
 
     total_start = time.perf_counter()
     rss_samples = [rss for rss in [process_rss_bytes()] if rss is not None]
-    clouds: list[np.ndarray] = []
-    frame_rows: list[dict[str, object]] = []
-    for index, frame in enumerate(frames):
-        cloud, rgbd_read_runtime, preprocessing_runtime = make_point_cloud(
-            frame, stride=args.stride, voxel_size_m=args.voxel, min_depth_m=args.min_depth, max_depth_m=args.max_depth,
-        )
-        clouds.append(cloud)
-        rss = process_rss_bytes()
-        if rss is not None:
-            rss_samples.append(rss)
-        frame_rows.append({
-            "frame_index": index, "rgb_timestamp": frame.timestamp, "rgb_path": str(frame.rgb_path), "depth_path": str(frame.depth_path),
-            "rgb_depth_offset_s": frame.depth_time_offset_s,
-            "rgb_ground_truth_offset_s": frame.ground_truth_time_offset_s if isinstance(frame, RgbdFrame) else None,
-            "point_count": len(cloud), "rgbd_read_runtime_s": rgbd_read_runtime, "preprocessing_runtime_s": preprocessing_runtime,
-            "process_rss_bytes_after_preprocessing": rss,
-        })
-    cloud_runtime = sum(float(row["rgbd_read_runtime_s"]) + float(row["preprocessing_runtime_s"]) for row in frame_rows)
     identity_poses = run_identity(len(frames))
     if args.tracking_mode == "predictive_recovery":
+        clouds: list[np.ndarray] = []
+        frame_rows: list[dict[str, object]] = []
+        point_counts: list[int] = []
+        for index, frame in enumerate(frames):
+            cloud, rgbd_read_runtime, preprocessing_runtime = make_point_cloud(
+                frame, stride=args.stride, voxel_size_m=args.voxel, min_depth_m=args.min_depth, max_depth_m=args.max_depth,
+            )
+            clouds.append(cloud)
+            point_counts.append(len(cloud))
+            rss = process_rss_bytes()
+            if rss is not None:
+                rss_samples.append(rss)
+            frame_rows.append({
+                "frame_index": index, "rgb_timestamp": frame.timestamp, "rgb_path": str(frame.rgb_path), "depth_path": str(frame.depth_path),
+                "rgb_depth_offset_s": frame.depth_time_offset_s,
+                "rgb_ground_truth_offset_s": frame.ground_truth_time_offset_s if isinstance(frame, RgbdFrame) else None,
+                "point_count": len(cloud), "rgbd_read_runtime_s": rgbd_read_runtime, "preprocessing_runtime_s": preprocessing_runtime,
+                "process_rss_bytes_after_frame": rss,
+            })
         icp_poses, step_rows = run_icp_with_recovery(
             clouds,
             max_iterations=args.max_iterations,
@@ -482,21 +591,30 @@ def main() -> None:
             rss_samples=rss_samples,
         )
         method_name = "point_to_point_icp_predictive_recovery"
+        processing_mode = "cached_all_clouds_required_by_recovery_experiment"
+        for row in step_rows:
+            index = int(row["pair_index"])
+            row["rgbd_read_runtime_s"] = frame_rows[index]["rgbd_read_runtime_s"]
+            row["preprocessing_runtime_s"] = frame_rows[index]["preprocessing_runtime_s"]
+            row["compute_runtime_s"] = float(row["registration_runtime_s"]) + float(row["preprocessing_runtime_s"])
+            row["end_to_end_runtime_s"] = float(row["compute_runtime_s"]) + float(row["rgbd_read_runtime_s"])
+            row["input_to_pose_runtime_s"] = row["end_to_end_runtime_s"]
+            frame_rows[index].update({
+                "registration_runtime_s": row["registration_runtime_s"],
+                "compute_runtime_s": row["compute_runtime_s"],
+                "input_to_pose_runtime_s": row["input_to_pose_runtime_s"],
+                "process_rss_bytes_after_frame": row["process_rss_bytes_after_registration"],
+            })
+        frame_rows[0].update({
+            "registration_runtime_s": 0.0,
+            "compute_runtime_s": frame_rows[0]["preprocessing_runtime_s"],
+            "input_to_pose_runtime_s": float(frame_rows[0]["rgbd_read_runtime_s"]) + float(frame_rows[0]["preprocessing_runtime_s"]),
+        })
     else:
-        icp_poses, step_rows = run_icp(
-            clouds,
-            max_iterations=args.max_iterations,
-            correspondence_distance_m=args.max_correspondence,
-            min_correspondence_ratio=args.min_correspondence_ratio,
-            max_acceptable_rmse_m=args.max_acceptable_rmse,
-            rss_samples=rss_samples,
-        )
+        icp_poses, step_rows, frame_rows, point_counts = run_streaming_icp(frames, args, rss_samples)
         method_name = "frame_to_frame_point_to_point_icp"
-    for row in step_rows:
-        index = int(row["pair_index"])
-        row["rgbd_read_runtime_s"] = frame_rows[index]["rgbd_read_runtime_s"]
-        row["preprocessing_runtime_s"] = frame_rows[index]["preprocessing_runtime_s"]
-        row["end_to_end_runtime_s"] = float(row["registration_runtime_s"]) + float(row["rgbd_read_runtime_s"]) + float(row["preprocessing_runtime_s"])
+        processing_mode = "streaming_previous_cloud_only"
+    cloud_runtime = sum(float(row["rgbd_read_runtime_s"]) + float(row["preprocessing_runtime_s"]) for row in frame_rows)
     write_trajectory(args.output / "trajectory_icp_local.txt", frames, icp_poses)
     methods: list[dict[str, object]] = []
     generated_artifacts = ["trajectory_icp_local.txt", "icp_steps.csv", "frame_timings.csv"]
@@ -532,7 +650,7 @@ def main() -> None:
             "count": len(frames), "first_timestamp": frames[0].timestamp, "last_timestamp": frames[-1].timestamp,
             "mean_rgb_depth_offset_s": float(np.mean([frame.depth_time_offset_s for frame in frames])),
             "mean_rgb_ground_truth_offset_s": float(np.mean([frame.ground_truth_time_offset_s for frame in frames if isinstance(frame, RgbdFrame)])) if evaluation_available else None,
-            "point_counts": {"mean": float(np.mean([len(cloud) for cloud in clouds])), "min": int(min(map(len, clouds))), "max": int(max(map(len, clouds)))},
+            "point_counts": {"mean": float(np.mean(point_counts)), "min": int(min(point_counts)), "max": int(max(point_counts))},
         },
         "evaluation": {
             "available": evaluation_available,
@@ -542,6 +660,7 @@ def main() -> None:
         "methods": methods,
         "tracking": summarize_tracking(step_rows, lost_after=args.lost_after),
         "icp_performance": {
+            "processing_mode": processing_mode,
             "accepted_pairs": len(successful), "rejected_or_exception_pairs": len(step_rows) - len(successful),
             "registration_latency": latency_stats([float(row["registration_runtime_s"]) for row in successful]),
             "rgbd_read_latency": latency_stats([float(row["rgbd_read_runtime_s"]) for row in frame_rows]),
@@ -551,6 +670,8 @@ def main() -> None:
             "total_runtime_s": time.perf_counter() - total_start,
             "cloud_construction_runtime_s": cloud_runtime,
             "process_rss": {"sampling": "before the run, after every frame preprocessing and registration, and at experiment end", "peak_bytes": max(rss_samples) if rss_samples else None, "final_bytes": final_rss},
+            "timing_protocol_v2": summarize_frame_performance(frame_rows, warmup_frames=effective_warmup_frames),
+            "rss_trend_v2": summarize_rss_trend(frame_rows, warmup_frames=effective_warmup_frames),
         },
         "environment": {"python": sys.version, "numpy": np.__version__, "scipy": scipy.__version__, "pillow": PIL.__version__, "platform": platform.platform(), "processor": platform.processor(), "logical_cpu_count": os.cpu_count(), "gpu": "not used (CPU-only NumPy/SciPy baseline)"},
         "artifacts": generated_artifacts,

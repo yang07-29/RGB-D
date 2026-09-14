@@ -16,11 +16,11 @@
 
 下表中的 NumPy 和 Open3D 行分别取 18 组网格实验中 ATE 最低的配置。ATE 使用 SE(3) 对齐，不允许缩放；RPE 同时给出短间隔 Δ=1 和较长间隔 Δ=30 帧。
 
-| 方法 | voxel / correspondence（m） | ATE（m） | RPE Δ1（m / °） | RPE Δ30（m / °） | mean / p95（ms） | FPS | RSS | 拒绝帧对 |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 相机保持静止 | N/A | 0.186227 | 0.011286 / 0.679 | 0.274607 / 10.627 | N/A | N/A | N/A | N/A |
-| NumPy point-to-point | 0.08 / 0.12 | 0.152786 | 0.010438 / 0.562 | 0.212216 / 5.507 | 12.61 / 16.83 | 79.28 | 138.4 MiB | 15 / 789 |
-| Open3D point-to-plane | 0.05 / 0.08 | **0.058947** | **0.005687 / 0.551** | **0.046375 / 2.705** | 26.76 / 30.01 | 37.36 | 228.8 MiB | 22 / 789 |
+| 方法 | voxel / correspondence（m） | ATE（m） | RPE Δ1（m / °） | RPE Δ30（m / °） | 拒绝帧对 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 相机保持静止 | N/A | 0.186227 | 0.011286 / 0.679 | 0.274607 / 10.627 | N/A |
+| NumPy point-to-point | 0.08 / 0.12 | 0.152786 | 0.010438 / 0.562 | 0.212216 / 5.507 | 15 / 789 |
+| Open3D point-to-plane | 0.05 / 0.08 | **0.058947** | **0.005687 / 0.551** | **0.046375 / 2.705** | 22 / 789 |
 
 完整 18 行结果、参数和原始 summary 路径见 [`results/parameter_sweep_one_to_one_quality_v2/`](results/parameter_sweep_one_to_one_quality_v2/)。失败判据不是“程序是否报错”，而是最终变换下的对应点比例和全源点最近邻 RMSE；被拒绝的帧对保持上一有效位姿，并照常计入轨迹误差。
 
@@ -35,6 +35,17 @@
 | fr1/desk2 | 612 | 0.970802 | 0.551096 | **0.391915** | 18 / 611 |
 
 完整的 Δ=1/30 RPE、延迟、FPS 和 RSS 在 [`results/multi_sequence_one_to_one_quality_v2/`](results/multi_sequence_one_to_one_quality_v2/)。desk2 的 ATE 仍有 0.392 m，说明逐帧 ICP 在快速运动和低重叠情况下会累积明显漂移；这也是后续跟踪恢复和回环模块要解决的问题。
+
+### 流式性能复测
+
+两个 Python 实现现已改为逐帧读取，默认只保留上一帧点云。固定 `voxel=0.05 m`、`correspondence=0.08 m`，每个方法用独立进程完整运行三次；前 30 帧仍参与轨迹，只从稳态延迟统计中排除。
+
+| 方法 | ATE（m） | 输入到位姿 mean（ms） | p95（ms） | FPS | 峰值 RSS（MiB） |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| NumPy point-to-point | 0.180483 | 19.88 ± 0.35 | 36.36 ± 0.66 | 约 50.3 | 76.5（均值） |
+| Open3D point-to-plane | **0.058947** | 29.91 ± 0.11 | **33.27 ± 0.14** | 约 33.4 | 154.0（均值） |
+
+这里的“输入到位姿”包含 RGB/depth 解码、点云预处理、ICP、质量判断和位姿累积，不包含关联、真值评测、绘图、结果写盘及 RSS 采样。Open3D 另做了 2376 帧循环压力运行；稳态 RSS 增加 24.54 MiB（约 10.25 KiB/帧），所以目前只能证明历史点云缓存已去除，不能声称常驻内存完全稳定。原始逐帧曲线和全部 summary 见 [`results/performance_streaming_v2/`](results/performance_streaming_v2/)。
 
 ### Python 与 C++ 对照
 
@@ -169,6 +180,9 @@ powershell -ExecutionPolicy Bypass -File scripts\run_tracking_stress.ps1
 
 # 位姿图、回环质量门与错误边压力实验
 powershell -ExecutionPolicy Bypass -File scripts\run_pose_graph.ps1
+
+# NumPy/Open3D 各三次性能复测 + Open3D 2376 帧压力运行
+powershell -ExecutionPolicy Bypass -File scripts\run_performance_benchmark.ps1
 ```
 
 真值文件不是里程计的必需输入。对没有 `groundtruth.txt` 的 RGB-D 目录，或者希望显式关闭评测时：

@@ -123,3 +123,32 @@ def test_pose_graph_edge_quality_report_records_clean_and_adversarial_runs():
         "loop_correct_and_rejected_cases.png",
     ):
         assert (result / name).is_file()
+
+
+def test_streaming_performance_report_has_repeats_and_soak_evidence():
+    result = ROOT / "results" / "performance_streaming_v2"
+    rows = _rows(result / "benchmark_table.csv")
+    regular = [row for row in rows if row["run"].startswith("run_")]
+    soak = next(row for row in rows if row["run"] == "soak_3x")
+    assert len(regular) == 6
+    assert {(row["method"], row["run"]) for row in regular} == {
+        (method, f"run_{index}")
+        for method in ("numpy", "open3d")
+        for index in range(1, 4)
+    }
+    assert {row["frames"] for row in regular} == {"790"}
+    assert all(row["evaluation_available"] == "True" for row in regular)
+    for method in ("numpy", "open3d"):
+        ate_values = [float(row["ate_rmse_m"]) for row in regular if row["method"] == method]
+        assert max(ate_values) - min(ate_values) < 1e-12
+    assert soak["method"] == "open3d"
+    assert soak["frames"] == "2376"
+    assert soak["evaluation_available"] == "False"
+
+    report = json.loads((result / "summary.json").read_text(encoding="utf-8"))
+    assert report["independent_full_sequence_runs"] == 3
+    assert set(report["methods"]) == {"numpy", "open3d"}
+    assert report["soak_input_frames_per_cycle"] == 792
+    assert len(report["soak_cycle_rss"]) == 3
+    assert (result / "latency_curve.png").is_file()
+    assert (result / "rss_curve.png").is_file()

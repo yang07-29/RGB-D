@@ -27,6 +27,7 @@ class Ros2MetricsTests(unittest.TestCase):
         self.assertAlmostEqual(result["input_message_rate_hz_from_timestamps"], 10.0)
         self.assertEqual(result["status_counts"]["ok"], 2)
         self.assertEqual(result["process_peak_rss_bytes"], 2000)
+        self.assertIn("before metrics CSV", result["measurement_scope"]["callback_latency_ms"])
 
 
 if __name__ == "__main__":
