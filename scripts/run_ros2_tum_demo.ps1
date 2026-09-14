@@ -3,6 +3,7 @@ param(
     [double]$PublishHz = 5.0,
     [int]$TimeoutSeconds = 60,
     [int]$RosDomainId = 42,
+    [string]$RmwImplementation = "rmw_cyclonedds_cpp",
     [string]$OutputDirectory = "artifacts/ros2_smoke"
 )
 
@@ -54,9 +55,10 @@ $env:PYTHONPATH = @(
 $env:AMENT_PREFIX_PATH = "$installPrefix;$($rosPrefix)\Library"
 $env:CMAKE_PREFIX_PATH = $env:AMENT_PREFIX_PATH
 $env:COLCON_PREFIX_PATH = $installPrefix
-$env:RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
+$env:RMW_IMPLEMENTATION = $RmwImplementation
 $env:ROS_DOMAIN_ID = [string]$RosDomainId
 $env:ROS_DISTRO = "jazzy"
+$env:ROS_LOG_DIR = Join-Path $output "ros_logs"
 $env:PYTHONNOUSERSITE = "1"
 $env:OMP_NUM_THREADS = "1"
 $env:OPENBLAS_NUM_THREADS = "1"
@@ -108,7 +110,7 @@ try {
     $processed = 0
     while ((Get-Date) -lt $deadline) {
         if (Test-Path -LiteralPath $metrics) {
-            $processed = [Math]::Max(0, (Get-Content -LiteralPath $metrics).Count - 1)
+            $processed = [Math]::Max(0, @(Get-Content -LiteralPath $metrics).Count - 1)
         }
         if ($processed -ge $Frames) { break }
         if ($node.HasExited) { throw "Odometry node exited after $processed frames; inspect $nodeStderr" }
@@ -119,7 +121,7 @@ try {
         throw "Timed out: received $processed of $Frames frames in $TimeoutSeconds seconds"
     }
     $trajectoryRows = if (Test-Path -LiteralPath $trajectoryTum) {
-        (Get-Content -LiteralPath $trajectoryTum).Count
+        @(Get-Content -LiteralPath $trajectoryTum).Count
     } else { 0 }
     if ($trajectoryRows -ne $Frames) {
         throw "Trajectory contains $trajectoryRows rows; expected $Frames"
