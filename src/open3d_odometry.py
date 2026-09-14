@@ -19,7 +19,7 @@ import PIL
 import scipy
 
 from .metrics import align_estimated_poses, absolute_trajectory_error, compose_camera_to_world, relative_pose_error
-from .quality import registration_failure_reason
+from .quality import evaluate_registration_quality, registration_failure_reason
 from .run_odometry import evaluate, make_point_cloud, plot_trajectories, run_identity, write_trajectory
 from .runtime import latency_stats, process_rss_bytes
 from .tum import load_tum_rgbd_frames
@@ -62,8 +62,12 @@ def run_point_to_plane(clouds, args, rss_samples):
                 clouds[index], clouds[index - 1], args.max_correspondence, np.eye(4), estimation, criteria,
             )
             source_points = len(clouds[index].points)
+            quality = evaluate_registration_quality(
+                np.asarray(clouds[index].points), np.asarray(clouds[index - 1].points), np.asarray(result.transformation),
+                max_correspondence_m=args.max_correspondence,
+            )
             reason = registration_failure_reason(
-                correspondence_ratio=float(result.fitness), residual_rmse_m=float(result.inlier_rmse),
+                correspondence_ratio=quality.correspondence_ratio, residual_rmse_m=quality.all_point_rmse_m,
                 min_correspondence_ratio=args.min_correspondence_ratio, max_residual_rmse_m=args.max_acceptable_rmse,
             )
             runtime = time.perf_counter() - start
@@ -79,6 +83,10 @@ def run_point_to_plane(clouds, args, rss_samples):
             rows.append({
                 "pair_index": index, "source_points": source_points, "target_points": len(clouds[index - 1].points),
                 "status": status, "fitness": float(result.fitness), "inlier_rmse_m": float(result.inlier_rmse),
+                "shared_correspondences": quality.correspondences,
+                "shared_correspondence_ratio": quality.correspondence_ratio,
+                "shared_inlier_rmse_m": quality.inlier_rmse_m,
+                "shared_all_point_rmse_m": quality.all_point_rmse_m,
                 "registration_runtime_s": runtime, "process_rss_bytes_after_registration": rss,
             })
         except RuntimeError as error:
@@ -89,6 +97,8 @@ def run_point_to_plane(clouds, args, rss_samples):
             rows.append({
                 "pair_index": index, "source_points": len(clouds[index].points), "target_points": len(clouds[index - 1].points),
                 "status": f"exception: {error}", "fitness": None, "inlier_rmse_m": None,
+                "shared_correspondences": 0, "shared_correspondence_ratio": 0.0,
+                "shared_inlier_rmse_m": None, "shared_all_point_rmse_m": None,
                 "registration_runtime_s": time.perf_counter() - start, "process_rss_bytes_after_registration": rss,
             })
     return poses, rows
@@ -151,6 +161,7 @@ def main() -> None:
     summary = {
         "experiment": "TUM RGB-D fr1/xyz Open3D point-to-plane ICP odometry",
         "created_utc": datetime.now(timezone.utc).isoformat(), "dataset": str(args.dataset),
+        "association_protocol": "one_to_one_minimum_offset_greedy_v2",
         "parameters": {key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()},
         "frames": {"count": len(frames), "first_timestamp": frames[0].timestamp, "last_timestamp": frames[-1].timestamp,
                    "mean_rgb_depth_offset_s": float(np.mean([frame.depth_time_offset_s for frame in frames])),
@@ -165,7 +176,8 @@ def main() -> None:
                         "process_rss": {"sampling": "before run, after every preprocessing/registration, and at experiment end", "peak_bytes": max(rss_samples) if rss_samples else None, "final_bytes": final_rss},
                         "total_runtime_s": time.perf_counter() - total_start},
         "environment": {"python": sys.version, "open3d": o3d.__version__, "numpy": np.__version__, "scipy": scipy.__version__, "pillow": PIL.__version__, "matplotlib": matplotlib.__version__, "platform": platform.platform(), "processor": platform.processor(), "logical_cpu_count": os.cpu_count(), "gpu": "not used"},
-        "notes": ["Uses exactly the same deterministic association and ATE/RPE functions as the NumPy baseline.", "Ground truth is evaluation-only.", "A pair is rejected for low Open3D fitness or high Open3D inlier RMSE; rejected pairs retain the previous pose."],
+        "quality_protocol": "shared_nearest_neighbor_v2: final-transform source-to-target; gated correspondence ratio and inlier RMSE; all-source-point RMSE for residual rejection",
+        "notes": ["Uses exactly the same deterministic association, final-transform registration quality, and ATE/RPE functions as the NumPy baseline.", "Ground truth is evaluation-only.", "Open3D fitness/inlier RMSE are retained for diagnostics; acceptance uses the shared correspondence ratio and all-source-point RMSE. Rejected pairs retain the previous pose."],
     }
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     if not args.quiet:

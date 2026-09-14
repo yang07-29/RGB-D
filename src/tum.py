@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bisect import bisect_left
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -33,10 +33,27 @@ def _read_index(path: Path) -> list[tuple[float, Path]]:
     return rows
 
 
-def _nearest_index(times: list[float], value: float) -> int:
-    position = bisect_left(times, value)
-    candidates = [index for index in (position - 1, position) if 0 <= index < len(times)]
-    return min(candidates, key=lambda index: abs(times[index] - value))
+def _associate_one_to_one(first_times: list[float], second_times: list[float], max_offset_s: float) -> list[tuple[int, int]]:
+    """Return deterministic minimum-offset greedy matches without sample reuse."""
+    if not np.isfinite(max_offset_s) or max_offset_s < 0.0:
+        raise ValueError("max_offset_s must be finite and non-negative")
+    candidates: list[tuple[float, int, int]] = []
+    for first_index, first_time in enumerate(first_times):
+        left = bisect_left(second_times, first_time - max_offset_s)
+        right = bisect_right(second_times, first_time + max_offset_s)
+        candidates.extend(
+            (abs(first_time - second_times[second_index]), first_index, second_index)
+            for second_index in range(left, right)
+        )
+    used_first: set[int] = set()
+    used_second: set[int] = set()
+    matches: list[tuple[int, int]] = []
+    for _, first_index, second_index in sorted(candidates):
+        if first_index not in used_first and second_index not in used_second:
+            used_first.add(first_index)
+            used_second.add(second_index)
+            matches.append((first_index, second_index))
+    return sorted(matches)
 
 
 def _read_ground_truth(path: Path) -> list[tuple[float, np.ndarray]]:
@@ -62,10 +79,11 @@ def load_tum_rgbd_frames(
     max_depth_time_offset_s: float = 0.02,
     max_ground_truth_time_offset_s: float = 0.02,
 ) -> list[RgbdFrame]:
-    """Associate every RGB image with nearest depth and ground-truth samples.
+    """Associate RGB, depth, and ground truth one-to-one by minimum time offset.
 
-    The association is deterministic and only retains triples that meet both
-    supplied timestamp tolerances.  Poses follow TUM convention: camera to world.
+    Candidate pairs inside each gate are sorted by offset and greedily consumed,
+    matching the TUM association script's no-reuse rule. Poses follow TUM
+    convention: camera to world.
     """
     root = Path(dataset_dir)
     rgb = _read_index(root / "rgb.txt")
@@ -74,18 +92,22 @@ def load_tum_rgbd_frames(
     if not rgb or not depth or not ground_truth:
         raise ValueError("RGB, depth, and ground-truth files must all contain samples")
 
-    depth_times = [item[0] for item in depth]
-    gt_times = [item[0] for item in ground_truth]
+    rgb_depth_matches = _associate_one_to_one(
+        [item[0] for item in rgb], [item[0] for item in depth], max_depth_time_offset_s
+    )
+    matched_rgb_times = [rgb[rgb_index][0] for rgb_index, _ in rgb_depth_matches]
+    rgbd_ground_truth_matches = _associate_one_to_one(
+        matched_rgb_times, [item[0] for item in ground_truth], max_ground_truth_time_offset_s
+    )
     frames: list[RgbdFrame] = []
-    for rgb_time, rgb_path in rgb:
-        depth_index = _nearest_index(depth_times, rgb_time)
-        gt_index = _nearest_index(gt_times, rgb_time)
+    for rgb_depth_index, gt_index in rgbd_ground_truth_matches:
+        rgb_index, depth_index = rgb_depth_matches[rgb_depth_index]
+        rgb_time, rgb_path = rgb[rgb_index]
         depth_time, depth_path = depth[depth_index]
         gt_time, gt_pose = ground_truth[gt_index]
         depth_offset = abs(depth_time - rgb_time)
         gt_offset = abs(gt_time - rgb_time)
-        if depth_offset <= max_depth_time_offset_s and gt_offset <= max_ground_truth_time_offset_s:
-            frames.append(RgbdFrame(rgb_time, rgb_path, depth_path, depth_offset, gt_pose, gt_offset))
+        frames.append(RgbdFrame(rgb_time, rgb_path, depth_path, depth_offset, gt_pose, gt_offset))
     if len(frames) < 2:
         raise RuntimeError("Fewer than two timestamp-associated RGB-D frames were found")
     return frames

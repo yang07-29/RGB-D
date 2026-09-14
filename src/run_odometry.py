@@ -19,7 +19,7 @@ import scipy
 from .geometry import icp_point_to_point, voxel_downsample
 from .metrics import absolute_trajectory_error, align_estimated_poses, compose_camera_to_world, relative_pose_error
 from .rgbd import depth_to_points, load_png
-from .quality import registration_failure_reason
+from .quality import evaluate_registration_quality, registration_failure_reason
 from .runtime import latency_stats, process_rss_bytes
 from .tum import RgbdFrame, load_tum_rgbd_frames, pose_to_tum_row
 
@@ -64,31 +64,35 @@ def run_icp(
                 clouds[index], clouds[index - 1], max_iterations=max_iterations,
                 max_correspondence_distance=correspondence_distance_m,
             )
+            current_to_previous = np.eye(4)
+            current_to_previous[:3, :3] = result.rotation
+            current_to_previous[:3, 3] = result.translation
+            quality = evaluate_registration_quality(
+                clouds[index], clouds[index - 1], current_to_previous,
+                max_correspondence_m=correspondence_distance_m,
+            )
             reason = registration_failure_reason(
-                correspondence_ratio=result.correspondences / len(clouds[index]), residual_rmse_m=result.rmse,
+                correspondence_ratio=quality.correspondence_ratio, residual_rmse_m=quality.all_point_rmse_m,
                 min_correspondence_ratio=min_correspondence_ratio, max_residual_rmse_m=max_acceptable_rmse_m,
             )
+            common = {
+                "pair_index": index, "source_points": len(clouds[index]), "target_points": len(clouds[index - 1]),
+                "iterations": result.iterations, "correspondences": quality.correspondences,
+                "correspondence_ratio": quality.correspondence_ratio,
+                "inlier_rmse_m": quality.inlier_rmse_m,
+                "all_point_rmse_m": quality.all_point_rmse_m,
+                "nearest_neighbor_rmse_m": quality.all_point_rmse_m,
+            }
             if reason is not None:
                 poses.append(poses[-1].copy())
-                rows.append({
-                    "pair_index": index, "source_points": len(clouds[index]), "target_points": len(clouds[index - 1]),
-                    "status": f"rejected: {reason}", "iterations": result.iterations, "correspondences": result.correspondences,
-                    "nearest_neighbor_rmse_m": result.rmse, "registration_runtime_s": time.perf_counter() - start,
-                })
+                rows.append(common | {"status": f"rejected: {reason}", "registration_runtime_s": time.perf_counter() - start})
                 rss = process_rss_bytes()
                 if rss is not None:
                     rss_samples.append(rss)
                 rows[-1]["process_rss_bytes_after_registration"] = rss
                 continue
-            current_to_previous = np.eye(4)
-            current_to_previous[:3, :3] = result.rotation
-            current_to_previous[:3, 3] = result.translation
             poses.append(compose_camera_to_world(poses[-1], current_to_previous))
-            rows.append({
-                "pair_index": index, "source_points": len(clouds[index]), "target_points": len(clouds[index - 1]),
-                "status": "ok", "iterations": result.iterations, "correspondences": result.correspondences,
-                "nearest_neighbor_rmse_m": result.rmse, "registration_runtime_s": time.perf_counter() - start,
-            })
+            rows.append(common | {"status": "ok", "registration_runtime_s": time.perf_counter() - start})
         except RuntimeError as error:
             # Keep the previous pose so a single registration failure does not abort
             # the experiment; record it explicitly in the CSV and summary.
@@ -96,6 +100,7 @@ def run_icp(
             rows.append({
                 "pair_index": index, "source_points": len(clouds[index]), "target_points": len(clouds[index - 1]),
                 "status": f"failed: {error}", "iterations": 0, "correspondences": 0,
+                "correspondence_ratio": 0.0, "inlier_rmse_m": None, "all_point_rmse_m": None,
                 "nearest_neighbor_rmse_m": None, "registration_runtime_s": time.perf_counter() - start,
             })
         rss = process_rss_bytes()
@@ -107,12 +112,15 @@ def run_icp(
 
 def evaluate(name: str, poses: list[np.ndarray], ground_truth: list[np.ndarray]) -> tuple[dict[str, object], list[np.ndarray]]:
     aligned, rotation, translation = align_estimated_poses(poses, ground_truth)
-    return {
+    metrics = {
         "method": name,
         "ate": absolute_trajectory_error(aligned, ground_truth),
         "rpe_frame_delta_1": relative_pose_error(poses, ground_truth, frame_delta=1),
         "alignment_estimated_to_ground_truth": {"rotation": rotation.tolist(), "translation_m": translation.tolist()},
-    }, aligned
+    }
+    if len(poses) > 30:
+        metrics["rpe_frame_delta_30"] = relative_pose_error(poses, ground_truth, frame_delta=30)
+    return metrics, aligned
 
 
 def write_trajectory(path: Path, frames: list[RgbdFrame], poses: list[np.ndarray]) -> None:
@@ -222,6 +230,7 @@ def main() -> None:
         "experiment": "TUM RGB-D fr1/xyz multi-frame odometry",
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "dataset": str(args.dataset),
+        "association_protocol": "one_to_one_minimum_offset_greedy_v2",
         "parameters": vars(args) | {"dataset": str(args.dataset), "output": str(args.output)},
         "frames": {
             "count": len(frames), "first_timestamp": frames[0].timestamp, "last_timestamp": frames[-1].timestamp,
@@ -243,7 +252,8 @@ def main() -> None:
         },
         "environment": {"python": sys.version, "numpy": np.__version__, "scipy": scipy.__version__, "pillow": PIL.__version__, "platform": platform.platform(), "processor": platform.processor(), "logical_cpu_count": os.cpu_count(), "gpu": "not used (CPU-only NumPy/SciPy baseline)"},
         "artifacts": ["trajectory_icp_local.txt", "trajectory_icp_ate_aligned.txt", "trajectory_identity_ate_aligned.txt", "icp_steps.csv", "frame_timings.csv", "trajectory_xy_xz.png"],
-        "notes": ["ICP uses only consecutive depth point clouds and an identity relative-pose initialization.", "A pair is rejected when correspondence ratio is below min-correspondence-ratio or residual RMSE exceeds max-acceptable-rmse; rejected pairs retain the previous pose.", "RGB images are read for end-to-end RGB-D input timing but are not used by this depth-only ICP solver.", "Ground truth is used only after odometry for evaluation and ATE alignment.", "Identity is a no-motion baseline on exactly the same associated frames."],
+        "quality_protocol": "shared_nearest_neighbor_v2: final-transform source-to-target; gated correspondence ratio and inlier RMSE; all-source-point RMSE for residual rejection",
+        "notes": ["ICP uses only consecutive depth point clouds and an identity relative-pose initialization.", "A pair is rejected when the shared final-transform correspondence ratio is too low or all-source-point nearest-neighbor RMSE is too high; rejected pairs retain the previous pose.", "RGB images are read for end-to-end RGB-D input timing but are not used by this depth-only ICP solver.", "Ground truth is used only after odometry for evaluation and ATE alignment.", "Identity is a no-motion baseline on exactly the same associated frames."],
     }
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     if not args.quiet:

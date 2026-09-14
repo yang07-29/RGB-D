@@ -1,6 +1,7 @@
 param(
     [string]$Dataset = "data\rgbd_dataset_freiburg1_xyz",
-    [string]$Output = "artifacts\parameter_sweep"
+    [string]$Output = "artifacts\parameter_sweep_one_to_one_quality_v2",
+    [string]$ResultOutput = "results\parameter_sweep_one_to_one_quality_v2"
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,5 +19,5 @@ foreach ($voxel in $voxels) {
     }
 }
 
-& $python -m src.build_benchmark_report --input $Output --output results\parameter_sweep
+& $python -m src.build_benchmark_report --input $Output --output $ResultOutput
 if ($LASTEXITCODE -ne 0) { throw "Benchmark report aggregation failed" }

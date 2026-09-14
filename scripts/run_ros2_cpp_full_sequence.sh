@@ -4,7 +4,7 @@ set -euo pipefail
 dataset="${1:-data/rgbd_dataset_freiburg1_xyz}"
 output="${2:-artifacts/ros2_cpp_linux_full}"
 install_prefix="${3:-install/ros2}"
-expected_frames="${4:-796}"
+expected_frames="${4:-790}"
 
 if [[ ! -f "${dataset}/rgb.txt" || ! -f "${dataset}/depth.txt" || ! -f "${dataset}/groundtruth.txt" ]]; then
   echo "TUM dataset files are missing under ${dataset}" >&2

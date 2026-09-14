@@ -1,0 +1,15 @@
+{
+  "experiment": "C++17 TUM RGB-D frame-to-frame point-to-point ICP odometry",
+  "created_utc": "2026-09-14T12:18:49Z",
+  "dataset": "data\\rgbd_dataset_freiburg1_xyz",
+  "association_protocol": "one_to_one_minimum_offset_greedy_v2",
+  "quality_protocol": "shared_nearest_neighbor_v2: final-transform source-to-target; gated correspondence ratio and inlier RMSE; all-source-point RMSE for residual rejection",
+  "parameters": {"stride":8,"voxel_m":0.05,"min_depth_m":0.2,"max_depth_m":4,"max_iterations":30,"max_correspondence_m":0.12,"min_correspondence_ratio":0.5,"max_acceptable_rmse_m":0.12},
+  "frames": {"count":790,"associated_total":790,"point_count_mean":966.384810127,"point_count_min":413,"point_count_max":2111},
+  "quality": {"accepted_pairs":780,"rejected_or_exception_pairs":9},
+  "ate": {"alignment":"SE(3)","rmse_m":0.175657208457,"mean_m":0.156756043418,"median_m":0.14450219279,"max_m":0.389082875617},
+  "rpe_frame_delta_1": {"pairs":789,"translation_rmse_m":0.0111602052133,"translation_mean_m":0.0092714997434,"rotation_rmse_deg":0.575272743995,"rotation_mean_deg":0.49536588409},
+  "performance": {"input_and_preprocessing_latency":{"samples":790,"mean_ms":11.2132672152,"median_ms":10.7617,"p95_ms":14.373265,"fps_from_mean":89.1800739971},"registration_latency":{"samples":780,"mean_ms":2.73811320513,"median_ms":1.88165,"p95_ms":8.634115,"fps_from_mean":365.21499481},"end_to_end_latency_excluding_first_frame":{"samples":780,"mean_ms":13.9618088462,"median_ms":12.82335,"p95_ms":21.651045,"fps_from_mean":71.623957255},"process_peak_rss_bytes":35123200,"total_runtime_s":11.1125998},
+  "environment": {"language":"C++17","compiler":"16.1.0","opencv":"4.13.0","eigen":"header-only","gpu":"not used"},
+  "notes": ["Ground truth is evaluation-only.","ICP maps current-camera points into the previous camera frame.","End-to-end latency includes OpenCV RGB/depth reads, back-projection, voxel downsampling, and registration.","ICP correspondence count uses the distance gate; residual RMSE uses all source points, matching the Python baseline."]
+}

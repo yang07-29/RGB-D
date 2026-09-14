@@ -350,6 +350,8 @@ int main(int argc, char** argv) {
                 << "  \"experiment\": \"C++17 TUM RGB-D frame-to-frame point-to-point ICP odometry\",\n"
                 << "  \"created_utc\": " << std::quoted(utc_now()) << ",\n"
                 << "  \"dataset\": " << std::quoted(options.dataset.string()) << ",\n"
+                << "  \"association_protocol\": \"one_to_one_minimum_offset_greedy_v2\",\n"
+                << "  \"quality_protocol\": \"shared_nearest_neighbor_v2: final-transform source-to-target; gated correspondence ratio and inlier RMSE; all-source-point RMSE for residual rejection\",\n"
                 << "  \"parameters\": {\"stride\":" << options.stride << ",\"voxel_m\":" << options.voxel_m
                 << ",\"min_depth_m\":" << options.min_depth_m << ",\"max_depth_m\":" << options.max_depth_m
                 << ",\"max_iterations\":" << options.max_iterations << ",\"max_correspondence_m\":" << options.max_correspondence_m

@@ -1,0 +1,199 @@
+{
+  "experiment": "TUM RGB-D fr1/xyz multi-frame odometry",
+  "created_utc": "2026-09-14T09:32:44.419334+00:00",
+  "dataset": "data\\rgbd_dataset_freiburg1_xyz",
+  "association_protocol": "one_to_one_minimum_offset_greedy_v2",
+  "parameters": {
+    "dataset": "data\\rgbd_dataset_freiburg1_xyz",
+    "output": "artifacts\\parameter_sweep_one_to_one_quality_v2\\numpy_point_to_point\\voxel_0.05_corr_0.12",
+    "max_frames": null,
+    "frame_step": 1,
+    "stride": 8,
+    "voxel": 0.05,
+    "min_depth": 0.2,
+    "max_depth": 4.0,
+    "max_iterations": 30,
+    "max_correspondence": 0.12,
+    "min_correspondence_ratio": 0.5,
+    "max_acceptable_rmse": 0.12,
+    "quiet": true
+  },
+  "frames": {
+    "count": 790,
+    "first_timestamp": 1305031102.175304,
+    "last_timestamp": 1305031128.747363,
+    "mean_rgb_depth_offset_s": 0.0062952726702146895,
+    "mean_rgb_ground_truth_offset_s": 0.0029854427410077444,
+    "point_counts": {
+      "mean": 966.3848101265822,
+      "min": 413,
+      "max": 2111
+    }
+  },
+  "methods": [
+    {
+      "method": "identity_no_motion_baseline",
+      "ate": {
+        "rmse_m": 0.18622666309072422,
+        "mean_m": 0.1656423858763453,
+        "median_m": 0.15328683232031373,
+        "max_m": 0.3611853172326827
+      },
+      "rpe_frame_delta_1": {
+        "frame_delta": 1,
+        "pairs": 789,
+        "translation_rmse_m": 0.011286277657906347,
+        "translation_mean_m": 0.010152913578299956,
+        "rotation_rmse_deg": 0.6786528200516773,
+        "rotation_mean_deg": 0.5807962438124599
+      },
+      "alignment_estimated_to_ground_truth": {
+        "rotation": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation_m": [
+          1.247743291139241,
+          0.6098037974683546,
+          1.547855822784809
+        ]
+      },
+      "rpe_frame_delta_30": {
+        "frame_delta": 30,
+        "pairs": 760,
+        "translation_rmse_m": 0.2746072616147995,
+        "translation_mean_m": 0.2438065722148274,
+        "rotation_rmse_deg": 10.627457367639943,
+        "rotation_mean_deg": 8.959454233301376
+      }
+    },
+    {
+      "method": "frame_to_frame_point_to_point_icp",
+      "ate": {
+        "rmse_m": 0.17573201042324355,
+        "mean_m": 0.15682407961954814,
+        "median_m": 0.14462614430918358,
+        "max_m": 0.38907495632008715
+      },
+      "rpe_frame_delta_1": {
+        "frame_delta": 1,
+        "pairs": 789,
+        "translation_rmse_m": 0.011160183477366909,
+        "translation_mean_m": 0.009271512586544389,
+        "rotation_rmse_deg": 0.5752833506049564,
+        "rotation_mean_deg": 0.4953923676107423
+      },
+      "alignment_estimated_to_ground_truth": {
+        "rotation": [
+          [
+            -0.5845585374684648,
+            0.6662281867354011,
+            -0.46306729475529773
+          ],
+          [
+            0.6079297877887251,
+            -0.01831621179460012,
+            -0.7937794967776955
+          ],
+          [
+            -0.5373199134518337,
+            -0.7455229839413108,
+            -0.39431306220230516
+          ]
+        ],
+        "translation_m": [
+          1.3272680348643677,
+          0.6829219143056631,
+          1.5546296420804937
+        ]
+      },
+      "rpe_frame_delta_30": {
+        "frame_delta": 30,
+        "pairs": 760,
+        "translation_rmse_m": 0.21622040471784662,
+        "translation_mean_m": 0.18017268538033193,
+        "rotation_rmse_deg": 4.974698681612574,
+        "rotation_mean_deg": 4.010900203812827
+      }
+    }
+  ],
+  "icp_performance": {
+    "accepted_pairs": 780,
+    "rejected_or_exception_pairs": 9,
+    "registration_latency": {
+      "samples": 780,
+      "mean_s": 0.007884069743593979,
+      "median_s": 0.0059670499999811,
+      "p95_s": 0.021820040000091006,
+      "fps_from_mean": 126.83804589787238
+    },
+    "rgbd_read_latency": {
+      "samples": 790,
+      "mean_s": 0.007921155569620399,
+      "median_s": 0.007815600000071754,
+      "p95_s": 0.008861155000056442,
+      "fps_from_mean": 126.24420656946174
+    },
+    "preprocessing_latency": {
+      "samples": 790,
+      "mean_s": 0.0016803121518987724,
+      "median_s": 0.0016383000000814718,
+      "p95_s": 0.0020055549999483447,
+      "fps_from_mean": 595.1275177472164
+    },
+    "end_to_end_latency_excluding_first_frame": {
+      "samples": 780,
+      "mean_s": 0.017477600000003035,
+      "median_s": 0.015619999999898937,
+      "p95_s": 0.031394945000204184,
+      "fps_from_mean": 57.216093742838055
+    },
+    "mean_iterations": 8.065384615384616,
+    "total_runtime_s": 14.814391399999977,
+    "cloud_construction_runtime_s": 7.585159500000145,
+    "process_rss": {
+      "sampling": "before the run, after every frame preprocessing and registration, and at experiment end",
+      "peak_bytes": 153968640,
+      "final_bytes": 153968640
+    }
+  },
+  "environment": {
+    "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:26:47) [MSC v.1942 64 bit (AMD64)]",
+    "numpy": "2.4.4",
+    "scipy": "1.16.3",
+    "pillow": "12.2.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "logical_cpu_count": 24,
+    "gpu": "not used (CPU-only NumPy/SciPy baseline)"
+  },
+  "artifacts": [
+    "trajectory_icp_local.txt",
+    "trajectory_icp_ate_aligned.txt",
+    "trajectory_identity_ate_aligned.txt",
+    "icp_steps.csv",
+    "frame_timings.csv",
+    "trajectory_xy_xz.png"
+  ],
+  "quality_protocol": "shared_nearest_neighbor_v2: final-transform source-to-target; gated correspondence ratio and inlier RMSE; all-source-point RMSE for residual rejection",
+  "notes": [
+    "ICP uses only consecutive depth point clouds and an identity relative-pose initialization.",
+    "A pair is rejected when the shared final-transform correspondence ratio is too low or all-source-point nearest-neighbor RMSE is too high; rejected pairs retain the previous pose.",
+    "RGB images are read for end-to-end RGB-D input timing but are not used by this depth-only ICP solver.",
+    "Ground truth is used only after odometry for evaluation and ATE alignment.",
+    "Identity is a no-motion baseline on exactly the same associated frames."
+  ]
+}

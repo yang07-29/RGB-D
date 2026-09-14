@@ -1,10 +1,13 @@
 #include "rgbd/geometry.hpp"
 #include "rgbd/metrics.hpp"
 #include "rgbd/rgbd.hpp"
+#include "rgbd/tum.hpp"
 
 #include <Eigen/Geometry>
 
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -94,6 +97,22 @@ void test_pose_direction_and_metrics() {
     require(rgbd::relative_pose_error(estimated, reference, 1).translation_rmse_m < 1e-12, "RPE should be invariant to a global left transform");
 }
 
+void test_tum_association_is_one_to_one() {
+    const auto root = std::filesystem::temp_directory_path() / "rgbd_cpp_tum_one_to_one";
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream(root / "rgb.txt") << "1.000 rgb/a.png\n1.006 rgb/b.png\n2.000 rgb/c.png\n3.000 rgb/d.png\n";
+        std::ofstream(root / "depth.txt") << "1.004 depth/a.png\n2.001 depth/c.png\n3.001 depth/d.png\n";
+        std::ofstream(root / "groundtruth.txt")
+            << "1.005 1 0 0 0 0 0 1\n2.002 2 0 0 0 0 0 1\n3.002 3 0 0 0 0 0 1\n";
+    }
+    const auto frames = rgbd::load_tum_rgbd_frames(root);
+    std::filesystem::remove_all(root);
+    require(frames.size() == 3, "one-to-one TUM association frame count mismatch");
+    require(std::abs(frames[0].timestamp - 1.006) < 1e-12, "closest RGB sample did not win depth match");
+    require(frames[0].depth_path != frames[1].depth_path, "depth sample was reused");
+}
+
 }  // namespace
 
 int main() {
@@ -103,7 +122,8 @@ int main() {
         test_voxel();
         test_icp();
         test_pose_direction_and_metrics();
-        std::cout << "5 C++ core tests passed\n";
+        test_tum_association_is_one_to_one();
+        std::cout << "6 C++ core tests passed\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "test failure: " << error.what() << '\n';

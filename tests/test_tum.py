@@ -36,6 +36,23 @@ class TumAssociationTests(unittest.TestCase):
         self.assertEqual(timestamps, [12.345])
         np.testing.assert_allclose(poses[0], pose, atol=1e-8)
 
+    def test_association_does_not_reuse_depth_or_ground_truth_samples(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "rgb.txt").write_text(
+                "1.000 rgb/a.png\n1.006 rgb/b.png\n2.000 rgb/c.png\n3.000 rgb/d.png\n", encoding="utf-8"
+            )
+            (root / "depth.txt").write_text(
+                "1.004 depth/a.png\n2.001 depth/c.png\n3.001 depth/d.png\n", encoding="utf-8"
+            )
+            (root / "groundtruth.txt").write_text(
+                "1.005 1 0 0 0 0 0 1\n2.002 2 0 0 0 0 0 1\n3.002 3 0 0 0 0 0 1\n", encoding="utf-8"
+            )
+            frames = load_tum_rgbd_frames(root)
+        self.assertEqual([frame.timestamp for frame in frames], [1.006, 2.0, 3.0])
+        self.assertEqual(len({frame.depth_path for frame in frames}), len(frames))
+        self.assertEqual([frame.ground_truth[0, 3] for frame in frames], [1.0, 2.0, 3.0])
+
 
 if __name__ == "__main__":
     unittest.main()

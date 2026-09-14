@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 
 namespace rgbd {
@@ -75,20 +76,34 @@ std::vector<PoseRow> read_ground_truth(const std::filesystem::path& path) {
     return rows;
 }
 
-template <typename Row>
-std::size_t nearest_index(const std::vector<Row>& rows, double timestamp) {
-    const auto position = std::lower_bound(
-        rows.begin(), rows.end(), timestamp,
-        [](const Row& row, double value) { return row.first < value; });
-    if (position == rows.begin()) {
-        return 0;
+std::vector<std::pair<std::size_t, std::size_t>> associate_one_to_one(
+    const std::vector<double>& first_times,
+    const std::vector<double>& second_times,
+    double max_offset_s) {
+    using Candidate = std::tuple<double, std::size_t, std::size_t>;
+    std::vector<Candidate> candidates;
+    for (std::size_t first = 0; first < first_times.size(); ++first) {
+        const auto left = std::lower_bound(second_times.begin(), second_times.end(), first_times[first] - max_offset_s);
+        const auto right = std::upper_bound(second_times.begin(), second_times.end(), first_times[first] + max_offset_s);
+        for (auto position = left; position != right; ++position) {
+            const std::size_t second = static_cast<std::size_t>(position - second_times.begin());
+            candidates.emplace_back(std::abs(first_times[first] - *position), first, second);
+        }
     }
-    if (position == rows.end()) {
-        return rows.size() - 1;
+    std::sort(candidates.begin(), candidates.end());
+    std::vector<bool> used_first(first_times.size(), false);
+    std::vector<bool> used_second(second_times.size(), false);
+    std::vector<std::pair<std::size_t, std::size_t>> matches;
+    for (const auto& [offset, first, second] : candidates) {
+        static_cast<void>(offset);
+        if (!used_first[first] && !used_second[second]) {
+            used_first[first] = true;
+            used_second[second] = true;
+            matches.emplace_back(first, second);
+        }
     }
-    const std::size_t right = static_cast<std::size_t>(position - rows.begin());
-    const std::size_t left = right - 1;
-    return std::abs(rows[left].first - timestamp) <= std::abs(rows[right].first - timestamp) ? left : right;
+    std::sort(matches.begin(), matches.end());
+    return matches;
 }
 
 }  // namespace
@@ -103,23 +118,36 @@ std::vector<RgbdFrame> load_tum_rgbd_frames(
     if (rgb.empty() || depth.empty() || ground_truth.empty()) {
         throw std::runtime_error("RGB, depth, and ground-truth indices must be non-empty");
     }
+    std::vector<double> rgb_times;
+    std::vector<double> depth_times;
+    std::vector<double> ground_truth_times;
+    for (const auto& row : rgb) rgb_times.push_back(row.first);
+    for (const auto& row : depth) depth_times.push_back(row.first);
+    for (const auto& row : ground_truth) ground_truth_times.push_back(row.first);
+    const auto rgb_depth_matches = associate_one_to_one(rgb_times, depth_times, max_depth_time_offset_s);
+    std::vector<double> matched_rgb_times;
+    for (const auto& [rgb_index, depth_index] : rgb_depth_matches) {
+        static_cast<void>(depth_index);
+        matched_rgb_times.push_back(rgb[rgb_index].first);
+    }
+    const auto rgbd_gt_matches = associate_one_to_one(
+        matched_rgb_times, ground_truth_times, max_ground_truth_time_offset_s);
+
     std::vector<RgbdFrame> frames;
-    frames.reserve(rgb.size());
-    for (const auto& [rgb_time, rgb_path] : rgb) {
-        const std::size_t depth_index = nearest_index(depth, rgb_time);
-        const std::size_t gt_index = nearest_index(ground_truth, rgb_time);
+    frames.reserve(rgbd_gt_matches.size());
+    for (const auto& [rgb_depth_index, gt_index] : rgbd_gt_matches) {
+        const auto [rgb_index, depth_index] = rgb_depth_matches[rgb_depth_index];
+        const auto& [rgb_time, rgb_path] = rgb[rgb_index];
         const double depth_offset = std::abs(depth[depth_index].first - rgb_time);
         const double gt_offset = std::abs(ground_truth[gt_index].first - rgb_time);
-        if (depth_offset <= max_depth_time_offset_s && gt_offset <= max_ground_truth_time_offset_s) {
-            frames.push_back({
-                rgb_time,
-                rgb_path,
-                depth[depth_index].second,
-                depth_offset,
-                ground_truth[gt_index].second,
-                gt_offset,
-            });
-        }
+        frames.push_back({
+            rgb_time,
+            rgb_path,
+            depth[depth_index].second,
+            depth_offset,
+            ground_truth[gt_index].second,
+            gt_offset,
+        });
     }
     if (frames.size() < 2) {
         throw std::runtime_error("fewer than two associated TUM RGB-D frames");

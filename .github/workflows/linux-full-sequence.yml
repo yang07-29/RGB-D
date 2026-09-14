@@ -23,7 +23,7 @@ jobs:
           sha256sum /tmp/rgbd_dataset_freiburg1_xyz.tgz \
             | tee artifacts/linux_cpp_full/dataset_archive_sha256.txt
           tar -xzf /tmp/rgbd_dataset_freiburg1_xyz.tgz -C data
-      - name: Build, test, and run all 796 frames
+      - name: Build, test, and run all one-to-one associated frames
         run: |
           bash scripts/build_and_run_cpp.sh \
             data/rgbd_dataset_freiburg1_xyz \

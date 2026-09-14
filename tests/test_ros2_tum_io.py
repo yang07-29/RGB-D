@@ -42,6 +42,22 @@ class Ros2TumIoTests(unittest.TestCase):
             self.assertEqual(rows[0][3], root / "depth/a.png")
             self.assertEqual(rows[1][3], root / "depth/b.png")
 
+    def test_association_is_one_to_one(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "rgb.txt").write_text(
+                "1.000 rgb/a.png\n1.006 rgb/b.png\n2.000 rgb/c.png\n3.000 rgb/d.png\n", encoding="utf-8"
+            )
+            (root / "depth.txt").write_text(
+                "1.004 depth/a.png\n2.001 depth/c.png\n3.001 depth/d.png\n", encoding="utf-8"
+            )
+            (root / "groundtruth.txt").write_text(
+                "1.005 0 0 0 0 0 0 1\n2.002 0 0 0 0 0 0 1\n3.002 0 0 0 0 0 0 1\n", encoding="utf-8"
+            )
+            rows = TUM_IO.associate_rgb_depth(root)
+        self.assertEqual([row[0] for row in rows], [1.006, 2.0, 3.0])
+        self.assertEqual(len({row[3] for row in rows}), len(rows))
+
 
 if __name__ == "__main__":
     unittest.main()

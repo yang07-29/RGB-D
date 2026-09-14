@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 
 from src.metrics import absolute_trajectory_error, align_estimated_poses, compose_camera_to_world, relative_pose_error
+from src.run_odometry import evaluate
 
 
 class MetricsTests(unittest.TestCase):
@@ -32,6 +33,16 @@ class MetricsTests(unittest.TestCase):
         rpe = relative_pose_error(estimated, reference)
         self.assertLess(rpe["translation_rmse_m"], 1e-12)
         self.assertLess(rpe["rotation_rmse_deg"], 1e-12)
+
+    def test_evaluate_reports_short_and_long_interval_rpe(self):
+        poses = []
+        for index in range(35):
+            pose = np.eye(4)
+            pose[0, 3] = index * 0.01
+            poses.append(pose)
+        metrics, _ = evaluate("controlled", poses, poses)
+        self.assertEqual(metrics["rpe_frame_delta_1"]["pairs"], 34)
+        self.assertEqual(metrics["rpe_frame_delta_30"]["pairs"], 5)
 
 
 if __name__ == "__main__":

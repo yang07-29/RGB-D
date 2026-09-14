@@ -40,14 +40,14 @@ jobs:
             --install-base install/ros2 \
             --packages-select rgbd_odometry_ros \
             --cmake-args -DRGBD_ROS_BUILD_CPP=ON -DCMAKE_BUILD_TYPE=Release -G Ninja
-      - name: Run ROS2 C++ node on all 796 frames
+      - name: Run ROS2 C++ node on all 790 one-to-one associated frames
         shell: bash
         run: |
           bash scripts/run_ros2_cpp_full_sequence.sh \
             data/rgbd_dataset_freiburg1_xyz \
             artifacts/ros2_cpp_linux_full \
             install/ros2 \
-            796
+            790
       - name: Record runner environment
         if: always()
         shell: bash

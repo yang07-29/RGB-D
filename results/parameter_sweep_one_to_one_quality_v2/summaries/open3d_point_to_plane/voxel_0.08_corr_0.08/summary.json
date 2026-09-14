@@ -1,0 +1,191 @@
+{
+  "experiment": "TUM RGB-D fr1/xyz Open3D point-to-plane ICP odometry",
+  "created_utc": "2026-09-14T09:34:21.069239+00:00",
+  "dataset": "data\\rgbd_dataset_freiburg1_xyz",
+  "association_protocol": "one_to_one_minimum_offset_greedy_v2",
+  "parameters": {
+    "dataset": "data\\rgbd_dataset_freiburg1_xyz",
+    "output": "artifacts\\parameter_sweep_one_to_one_quality_v2\\open3d_point_to_plane\\voxel_0.08_corr_0.08",
+    "max_frames": null,
+    "frame_step": 1,
+    "stride": 8,
+    "voxel": 0.08,
+    "min_depth": 0.2,
+    "max_depth": 4.0,
+    "normal_radius": 0.1,
+    "normal_max_nn": 30,
+    "max_iterations": 30,
+    "max_correspondence": 0.08,
+    "min_correspondence_ratio": 0.5,
+    "max_acceptable_rmse": 0.08,
+    "quiet": true
+  },
+  "frames": {
+    "count": 790,
+    "first_timestamp": 1305031102.175304,
+    "last_timestamp": 1305031128.747363,
+    "mean_rgb_depth_offset_s": 0.0062952726702146895,
+    "mean_rgb_ground_truth_offset_s": 0.0029854427410077444,
+    "point_counts": {
+      "mean": 502.29240506329114,
+      "min": 199,
+      "max": 1197
+    }
+  },
+  "methods": [
+    {
+      "method": "identity_no_motion_baseline",
+      "ate": {
+        "rmse_m": 0.18622666309072422,
+        "mean_m": 0.1656423858763453,
+        "median_m": 0.15328683232031373,
+        "max_m": 0.3611853172326827
+      },
+      "rpe_frame_delta_1": {
+        "frame_delta": 1,
+        "pairs": 789,
+        "translation_rmse_m": 0.011286277657906347,
+        "translation_mean_m": 0.010152913578299956,
+        "rotation_rmse_deg": 0.6786528200516773,
+        "rotation_mean_deg": 0.5807962438124599
+      },
+      "alignment_estimated_to_ground_truth": {
+        "rotation": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation_m": [
+          1.247743291139241,
+          0.6098037974683546,
+          1.547855822784809
+        ]
+      },
+      "rpe_frame_delta_30": {
+        "frame_delta": 30,
+        "pairs": 760,
+        "translation_rmse_m": 0.2746072616147995,
+        "translation_mean_m": 0.2438065722148274,
+        "rotation_rmse_deg": 10.627457367639943,
+        "rotation_mean_deg": 8.959454233301376
+      }
+    },
+    {
+      "method": "open3d_point_to_plane_icp",
+      "ate": {
+        "rmse_m": 0.0716729754803364,
+        "mean_m": 0.0671686506795909,
+        "median_m": 0.06681504490842145,
+        "max_m": 0.12013384301463037
+      },
+      "rpe_frame_delta_1": {
+        "frame_delta": 1,
+        "pairs": 789,
+        "translation_rmse_m": 0.0067657406407840145,
+        "translation_mean_m": 0.005799364622226852,
+        "rotation_rmse_deg": 0.5689697207588906,
+        "rotation_mean_deg": 0.4962226245326501
+      },
+      "alignment_estimated_to_ground_truth": {
+        "rotation": [
+          [
+            0.018357397502963425,
+            0.5705472501759865,
+            -0.8210595844843045
+          ],
+          [
+            0.9979694472486301,
+            0.039638688419079145,
+            0.049857363936327635
+          ],
+          [
+            0.06099170693776722,
+            -0.8203076311342197,
+            -0.5686610607275494
+          ]
+        ],
+        "translation_m": [
+          1.3975748177571545,
+          0.6401296705278491,
+          1.7351223911497273
+        ]
+      },
+      "rpe_frame_delta_30": {
+        "frame_delta": 30,
+        "pairs": 760,
+        "translation_rmse_m": 0.06073212493134518,
+        "translation_mean_m": 0.05357998411867341,
+        "rotation_rmse_deg": 2.74974533772153,
+        "rotation_mean_deg": 2.305878747316426
+      }
+    }
+  ],
+  "performance": {
+    "accepted_pairs": 762,
+    "rejected_or_exception_pairs": 27,
+    "rgbd_read_latency": {
+      "samples": 790,
+      "mean_s": 0.012044115696205119,
+      "median_s": 0.012037650000138456,
+      "p95_s": 0.013694794999992155,
+      "fps_from_mean": 83.02809647661238
+    },
+    "preprocessing_including_normals_latency": {
+      "samples": 790,
+      "mean_s": 0.010131755189863553,
+      "median_s": 0.010227649999819732,
+      "p95_s": 0.011160480000069127,
+      "fps_from_mean": 98.6995817862302
+    },
+    "registration_latency": {
+      "samples": 762,
+      "mean_s": 0.0016435164041988931,
+      "median_s": 0.0014345499998853484,
+      "p95_s": 0.003297255000086351,
+      "fps_from_mean": 608.4514869734048
+    },
+    "end_to_end_latency_excluding_first_frame": {
+      "samples": 762,
+      "mean_s": 0.02380028490812805,
+      "median_s": 0.02376145000005181,
+      "p95_s": 0.02669872000000168,
+      "fps_from_mean": 42.01630374846855
+    },
+    "process_rss": {
+      "sampling": "before run, after every preprocessing/registration, and at experiment end",
+      "peak_bytes": 222720000,
+      "final_bytes": 222720000
+    },
+    "total_runtime_s": 20.0228247
+  },
+  "environment": {
+    "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:26:47) [MSC v.1942 64 bit (AMD64)]",
+    "open3d": "0.19.0",
+    "numpy": "2.4.4",
+    "scipy": "1.16.3",
+    "pillow": "12.2.0",
+    "matplotlib": "3.10.6",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "logical_cpu_count": 24,
+    "gpu": "not used"
+  },
+  "quality_protocol": "shared_nearest_neighbor_v2: final-transform source-to-target; gated correspondence ratio and inlier RMSE; all-source-point RMSE for residual rejection",
+  "notes": [
+    "Uses exactly the same deterministic association, final-transform registration quality, and ATE/RPE functions as the NumPy baseline.",
+    "Ground truth is evaluation-only.",
+    "Open3D fitness/inlier RMSE are retained for diagnostics; acceptance uses the shared correspondence ratio and all-source-point RMSE. Rejected pairs retain the previous pose."
+  ]
+}
